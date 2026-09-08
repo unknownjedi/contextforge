@@ -51,6 +51,8 @@ type ProjectEdges struct {
 	Owner *User `json:"owner,omitempty"`
 	// Sources holds the value of the sources edge.
 	Sources []*Source `json:"sources,omitempty"`
+	// DatabaseSources holds the value of the database_sources edge.
+	DatabaseSources []*DatabaseSource `json:"database_sources,omitempty"`
 	// Documents holds the value of the documents edge.
 	Documents []*Document `json:"documents,omitempty"`
 	// Chunks holds the value of the chunks edge.
@@ -61,7 +63,7 @@ type ProjectEdges struct {
 	AuditLogs []*AuditLog `json:"audit_logs,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [6]bool
+	loadedTypes [7]bool
 }
 
 // OwnerOrErr returns the Owner value or an error if the edge
@@ -84,10 +86,19 @@ func (e ProjectEdges) SourcesOrErr() ([]*Source, error) {
 	return nil, &NotLoadedError{edge: "sources"}
 }
 
+// DatabaseSourcesOrErr returns the DatabaseSources value or an error if the edge
+// was not loaded in eager-loading.
+func (e ProjectEdges) DatabaseSourcesOrErr() ([]*DatabaseSource, error) {
+	if e.loadedTypes[2] {
+		return e.DatabaseSources, nil
+	}
+	return nil, &NotLoadedError{edge: "database_sources"}
+}
+
 // DocumentsOrErr returns the Documents value or an error if the edge
 // was not loaded in eager-loading.
 func (e ProjectEdges) DocumentsOrErr() ([]*Document, error) {
-	if e.loadedTypes[2] {
+	if e.loadedTypes[3] {
 		return e.Documents, nil
 	}
 	return nil, &NotLoadedError{edge: "documents"}
@@ -96,7 +107,7 @@ func (e ProjectEdges) DocumentsOrErr() ([]*Document, error) {
 // ChunksOrErr returns the Chunks value or an error if the edge
 // was not loaded in eager-loading.
 func (e ProjectEdges) ChunksOrErr() ([]*DocumentChunk, error) {
-	if e.loadedTypes[3] {
+	if e.loadedTypes[4] {
 		return e.Chunks, nil
 	}
 	return nil, &NotLoadedError{edge: "chunks"}
@@ -105,7 +116,7 @@ func (e ProjectEdges) ChunksOrErr() ([]*DocumentChunk, error) {
 // JobsOrErr returns the Jobs value or an error if the edge
 // was not loaded in eager-loading.
 func (e ProjectEdges) JobsOrErr() ([]*IngestionJob, error) {
-	if e.loadedTypes[4] {
+	if e.loadedTypes[5] {
 		return e.Jobs, nil
 	}
 	return nil, &NotLoadedError{edge: "jobs"}
@@ -114,7 +125,7 @@ func (e ProjectEdges) JobsOrErr() ([]*IngestionJob, error) {
 // AuditLogsOrErr returns the AuditLogs value or an error if the edge
 // was not loaded in eager-loading.
 func (e ProjectEdges) AuditLogsOrErr() ([]*AuditLog, error) {
-	if e.loadedTypes[5] {
+	if e.loadedTypes[6] {
 		return e.AuditLogs, nil
 	}
 	return nil, &NotLoadedError{edge: "audit_logs"}
@@ -235,6 +246,11 @@ func (_m *Project) QueryOwner() *UserQuery {
 // QuerySources queries the "sources" edge of the Project entity.
 func (_m *Project) QuerySources() *SourceQuery {
 	return NewProjectClient(_m.config).QuerySources(_m)
+}
+
+// QueryDatabaseSources queries the "database_sources" edge of the Project entity.
+func (_m *Project) QueryDatabaseSources() *DatabaseSourceQuery {
+	return NewProjectClient(_m.config).QueryDatabaseSources(_m)
 }
 
 // QueryDocuments queries the "documents" edge of the Project entity.

@@ -39,6 +39,8 @@ const (
 	EdgeOwner = "owner"
 	// EdgeSources holds the string denoting the sources edge name in mutations.
 	EdgeSources = "sources"
+	// EdgeDatabaseSources holds the string denoting the database_sources edge name in mutations.
+	EdgeDatabaseSources = "database_sources"
 	// EdgeDocuments holds the string denoting the documents edge name in mutations.
 	EdgeDocuments = "documents"
 	// EdgeChunks holds the string denoting the chunks edge name in mutations.
@@ -63,6 +65,13 @@ const (
 	SourcesInverseTable = "sources"
 	// SourcesColumn is the table column denoting the sources relation/edge.
 	SourcesColumn = "project_id"
+	// DatabaseSourcesTable is the table that holds the database_sources relation/edge.
+	DatabaseSourcesTable = "database_sources"
+	// DatabaseSourcesInverseTable is the table name for the DatabaseSource entity.
+	// It exists in this package in order to avoid circular dependency with the "databasesource" package.
+	DatabaseSourcesInverseTable = "database_sources"
+	// DatabaseSourcesColumn is the table column denoting the database_sources relation/edge.
+	DatabaseSourcesColumn = "project_id"
 	// DocumentsTable is the table that holds the documents relation/edge.
 	DocumentsTable = "documents"
 	// DocumentsInverseTable is the table name for the Document entity.
@@ -224,6 +233,20 @@ func BySources(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	}
 }
 
+// ByDatabaseSourcesCount orders the results by database_sources count.
+func ByDatabaseSourcesCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newDatabaseSourcesStep(), opts...)
+	}
+}
+
+// ByDatabaseSources orders the results by database_sources terms.
+func ByDatabaseSources(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newDatabaseSourcesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // ByDocumentsCount orders the results by documents count.
 func ByDocumentsCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -291,6 +314,13 @@ func newSourcesStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(SourcesInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, SourcesTable, SourcesColumn),
+	)
+}
+func newDatabaseSourcesStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(DatabaseSourcesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, DatabaseSourcesTable, DatabaseSourcesColumn),
 	)
 }
 func newDocumentsStep() *sqlgraph.Step {

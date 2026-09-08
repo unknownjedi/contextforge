@@ -24,9 +24,10 @@ type Handlers struct {
 	Project  *handler.ProjectHandler
 	Source   *handler.SourceHandler
 	Document *handler.DocumentHandler
-	Job      *handler.JobHandler
-	Chat     *handler.ChatHandler
-	Webhook  *handler.WebhookHandler
+	Job            *handler.JobHandler
+	Chat           *handler.ChatHandler
+	Webhook        *handler.WebhookHandler
+	DatabaseSource *handler.DatabaseSourceHandler
 }
 
 // Server encapsulates the HTTP router and server lifecycle.
@@ -163,6 +164,22 @@ func (s *Server) MountRoutes(h Handlers, projectRepo repository.ProjectRepositor
 				projectGroup.POST("/sources", h.Source.CreateSource)
 				projectGroup.DELETE("/sources/:source_id", h.Source.DeleteSource)
 				projectGroup.POST("/sources/:source_id/sync", syncLimiter.Middleware(), h.Source.SyncSource)
+			}
+
+			if h.DatabaseSource != nil {
+				dbGroup := projectGroup.Group("/sources/database")
+				{
+					dbGroup.POST("/test", h.DatabaseSource.TestRawConnection)
+					dbGroup.POST("", h.DatabaseSource.CreateDatabaseSource)
+					dbGroup.GET("", h.DatabaseSource.ListDatabaseSources)
+					dbGroup.GET("/:source_id", h.DatabaseSource.GetDatabaseSource)
+					dbGroup.PATCH("/:source_id", h.DatabaseSource.UpdateDatabaseSource)
+					dbGroup.DELETE("/:source_id", h.DatabaseSource.DeleteDatabaseSource)
+					dbGroup.POST("/:source_id/test", h.DatabaseSource.TestStoredConnection)
+					dbGroup.GET("/:source_id/metadata", h.DatabaseSource.GetMetadata)
+					dbGroup.POST("/:source_id/sync", syncLimiter.Middleware(), h.DatabaseSource.TriggerSync)
+					dbGroup.GET("/:source_id/status", h.DatabaseSource.GetStatus)
+				}
 			}
 
 			if h.Document != nil {

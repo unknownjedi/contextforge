@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
 	"github.com/your-org/contextforge/internal/ent/auditlog"
+	"github.com/your-org/contextforge/internal/ent/databasesource"
 	"github.com/your-org/contextforge/internal/ent/document"
 	"github.com/your-org/contextforge/internal/ent/documentchunk"
 	"github.com/your-org/contextforge/internal/ent/ingestionjob"
@@ -198,6 +199,21 @@ func (_u *ProjectUpdate) AddSources(v ...*Source) *ProjectUpdate {
 	return _u.AddSourceIDs(ids...)
 }
 
+// AddDatabaseSourceIDs adds the "database_sources" edge to the DatabaseSource entity by IDs.
+func (_u *ProjectUpdate) AddDatabaseSourceIDs(ids ...uuid.UUID) *ProjectUpdate {
+	_u.mutation.AddDatabaseSourceIDs(ids...)
+	return _u
+}
+
+// AddDatabaseSources adds the "database_sources" edges to the DatabaseSource entity.
+func (_u *ProjectUpdate) AddDatabaseSources(v ...*DatabaseSource) *ProjectUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddDatabaseSourceIDs(ids...)
+}
+
 // AddDocumentIDs adds the "documents" edge to the Document entity by IDs.
 func (_u *ProjectUpdate) AddDocumentIDs(ids ...uuid.UUID) *ProjectUpdate {
 	_u.mutation.AddDocumentIDs(ids...)
@@ -288,6 +304,27 @@ func (_u *ProjectUpdate) RemoveSources(v ...*Source) *ProjectUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveSourceIDs(ids...)
+}
+
+// ClearDatabaseSources clears all "database_sources" edges to the DatabaseSource entity.
+func (_u *ProjectUpdate) ClearDatabaseSources() *ProjectUpdate {
+	_u.mutation.ClearDatabaseSources()
+	return _u
+}
+
+// RemoveDatabaseSourceIDs removes the "database_sources" edge to DatabaseSource entities by IDs.
+func (_u *ProjectUpdate) RemoveDatabaseSourceIDs(ids ...uuid.UUID) *ProjectUpdate {
+	_u.mutation.RemoveDatabaseSourceIDs(ids...)
+	return _u
+}
+
+// RemoveDatabaseSources removes "database_sources" edges to DatabaseSource entities.
+func (_u *ProjectUpdate) RemoveDatabaseSources(v ...*DatabaseSource) *ProjectUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveDatabaseSourceIDs(ids...)
 }
 
 // ClearDocuments clears all "documents" edges to the Document entity.
@@ -540,6 +577,51 @@ func (_u *ProjectUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(source.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.DatabaseSourcesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.DatabaseSourcesTable,
+			Columns: []string{project.DatabaseSourcesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(databasesource.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedDatabaseSourcesIDs(); len(nodes) > 0 && !_u.mutation.DatabaseSourcesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.DatabaseSourcesTable,
+			Columns: []string{project.DatabaseSourcesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(databasesource.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.DatabaseSourcesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.DatabaseSourcesTable,
+			Columns: []string{project.DatabaseSourcesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(databasesource.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
@@ -910,6 +992,21 @@ func (_u *ProjectUpdateOne) AddSources(v ...*Source) *ProjectUpdateOne {
 	return _u.AddSourceIDs(ids...)
 }
 
+// AddDatabaseSourceIDs adds the "database_sources" edge to the DatabaseSource entity by IDs.
+func (_u *ProjectUpdateOne) AddDatabaseSourceIDs(ids ...uuid.UUID) *ProjectUpdateOne {
+	_u.mutation.AddDatabaseSourceIDs(ids...)
+	return _u
+}
+
+// AddDatabaseSources adds the "database_sources" edges to the DatabaseSource entity.
+func (_u *ProjectUpdateOne) AddDatabaseSources(v ...*DatabaseSource) *ProjectUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddDatabaseSourceIDs(ids...)
+}
+
 // AddDocumentIDs adds the "documents" edge to the Document entity by IDs.
 func (_u *ProjectUpdateOne) AddDocumentIDs(ids ...uuid.UUID) *ProjectUpdateOne {
 	_u.mutation.AddDocumentIDs(ids...)
@@ -1000,6 +1097,27 @@ func (_u *ProjectUpdateOne) RemoveSources(v ...*Source) *ProjectUpdateOne {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveSourceIDs(ids...)
+}
+
+// ClearDatabaseSources clears all "database_sources" edges to the DatabaseSource entity.
+func (_u *ProjectUpdateOne) ClearDatabaseSources() *ProjectUpdateOne {
+	_u.mutation.ClearDatabaseSources()
+	return _u
+}
+
+// RemoveDatabaseSourceIDs removes the "database_sources" edge to DatabaseSource entities by IDs.
+func (_u *ProjectUpdateOne) RemoveDatabaseSourceIDs(ids ...uuid.UUID) *ProjectUpdateOne {
+	_u.mutation.RemoveDatabaseSourceIDs(ids...)
+	return _u
+}
+
+// RemoveDatabaseSources removes "database_sources" edges to DatabaseSource entities.
+func (_u *ProjectUpdateOne) RemoveDatabaseSources(v ...*DatabaseSource) *ProjectUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveDatabaseSourceIDs(ids...)
 }
 
 // ClearDocuments clears all "documents" edges to the Document entity.
@@ -1282,6 +1400,51 @@ func (_u *ProjectUpdateOne) sqlSave(ctx context.Context) (_node *Project, err er
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(source.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.DatabaseSourcesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.DatabaseSourcesTable,
+			Columns: []string{project.DatabaseSourcesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(databasesource.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedDatabaseSourcesIDs(); len(nodes) > 0 && !_u.mutation.DatabaseSourcesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.DatabaseSourcesTable,
+			Columns: []string{project.DatabaseSourcesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(databasesource.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.DatabaseSourcesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.DatabaseSourcesTable,
+			Columns: []string{project.DatabaseSourcesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(databasesource.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

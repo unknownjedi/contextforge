@@ -14,6 +14,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
 	"github.com/your-org/contextforge/internal/ent/auditlog"
+	"github.com/your-org/contextforge/internal/ent/databasesource"
 	"github.com/your-org/contextforge/internal/ent/document"
 	"github.com/your-org/contextforge/internal/ent/documentchunk"
 	"github.com/your-org/contextforge/internal/ent/ingestionjob"
@@ -26,16 +27,17 @@ import (
 // ProjectQuery is the builder for querying Project entities.
 type ProjectQuery struct {
 	config
-	ctx           *QueryContext
-	order         []project.OrderOption
-	inters        []Interceptor
-	predicates    []predicate.Project
-	withOwner     *UserQuery
-	withSources   *SourceQuery
-	withDocuments *DocumentQuery
-	withChunks    *DocumentChunkQuery
-	withJobs      *IngestionJobQuery
-	withAuditLogs *AuditLogQuery
+	ctx                 *QueryContext
+	order               []project.OrderOption
+	inters              []Interceptor
+	predicates          []predicate.Project
+	withOwner           *UserQuery
+	withSources         *SourceQuery
+	withDatabaseSources *DatabaseSourceQuery
+	withDocuments       *DocumentQuery
+	withChunks          *DocumentChunkQuery
+	withJobs            *IngestionJobQuery
+	withAuditLogs       *AuditLogQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -109,6 +111,28 @@ func (_q *ProjectQuery) QuerySources() *SourceQuery {
 			sqlgraph.From(project.Table, project.FieldID, selector),
 			sqlgraph.To(source.Table, source.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, project.SourcesTable, project.SourcesColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryDatabaseSources chains the current query on the "database_sources" edge.
+func (_q *ProjectQuery) QueryDatabaseSources() *DatabaseSourceQuery {
+	query := (&DatabaseSourceClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(project.Table, project.FieldID, selector),
+			sqlgraph.To(databasesource.Table, databasesource.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, project.DatabaseSourcesTable, project.DatabaseSourcesColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -391,17 +415,18 @@ func (_q *ProjectQuery) Clone() *ProjectQuery {
 		return nil
 	}
 	return &ProjectQuery{
-		config:        _q.config,
-		ctx:           _q.ctx.Clone(),
-		order:         append([]project.OrderOption{}, _q.order...),
-		inters:        append([]Interceptor{}, _q.inters...),
-		predicates:    append([]predicate.Project{}, _q.predicates...),
-		withOwner:     _q.withOwner.Clone(),
-		withSources:   _q.withSources.Clone(),
-		withDocuments: _q.withDocuments.Clone(),
-		withChunks:    _q.withChunks.Clone(),
-		withJobs:      _q.withJobs.Clone(),
-		withAuditLogs: _q.withAuditLogs.Clone(),
+		config:              _q.config,
+		ctx:                 _q.ctx.Clone(),
+		order:               append([]project.OrderOption{}, _q.order...),
+		inters:              append([]Interceptor{}, _q.inters...),
+		predicates:          append([]predicate.Project{}, _q.predicates...),
+		withOwner:           _q.withOwner.Clone(),
+		withSources:         _q.withSources.Clone(),
+		withDatabaseSources: _q.withDatabaseSources.Clone(),
+		withDocuments:       _q.withDocuments.Clone(),
+		withChunks:          _q.withChunks.Clone(),
+		withJobs:            _q.withJobs.Clone(),
+		withAuditLogs:       _q.withAuditLogs.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -427,6 +452,17 @@ func (_q *ProjectQuery) WithSources(opts ...func(*SourceQuery)) *ProjectQuery {
 		opt(query)
 	}
 	_q.withSources = query
+	return _q
+}
+
+// WithDatabaseSources tells the query-builder to eager-load the nodes that are connected to
+// the "database_sources" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *ProjectQuery) WithDatabaseSources(opts ...func(*DatabaseSourceQuery)) *ProjectQuery {
+	query := (&DatabaseSourceClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withDatabaseSources = query
 	return _q
 }
 
@@ -552,9 +588,10 @@ func (_q *ProjectQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Proj
 	var (
 		nodes       = []*Project{}
 		_spec       = _q.querySpec()
-		loadedTypes = [6]bool{
+		loadedTypes = [7]bool{
 			_q.withOwner != nil,
 			_q.withSources != nil,
+			_q.withDatabaseSources != nil,
 			_q.withDocuments != nil,
 			_q.withChunks != nil,
 			_q.withJobs != nil,
@@ -589,6 +626,13 @@ func (_q *ProjectQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Proj
 		if err := _q.loadSources(ctx, query, nodes,
 			func(n *Project) { n.Edges.Sources = []*Source{} },
 			func(n *Project, e *Source) { n.Edges.Sources = append(n.Edges.Sources, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withDatabaseSources; query != nil {
+		if err := _q.loadDatabaseSources(ctx, query, nodes,
+			func(n *Project) { n.Edges.DatabaseSources = []*DatabaseSource{} },
+			func(n *Project, e *DatabaseSource) { n.Edges.DatabaseSources = append(n.Edges.DatabaseSources, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -667,6 +711,36 @@ func (_q *ProjectQuery) loadSources(ctx context.Context, query *SourceQuery, nod
 	}
 	query.Where(predicate.Source(func(s *sql.Selector) {
 		s.Where(sql.InValues(s.C(project.SourcesColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.ProjectID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "project_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *ProjectQuery) loadDatabaseSources(ctx context.Context, query *DatabaseSourceQuery, nodes []*Project, init func(*Project), assign func(*Project, *DatabaseSource)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[uuid.UUID]*Project)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(databasesource.FieldProjectID)
+	}
+	query.Where(predicate.DatabaseSource(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(project.DatabaseSourcesColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {

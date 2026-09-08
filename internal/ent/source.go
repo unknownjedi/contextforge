@@ -10,6 +10,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/google/uuid"
+	"github.com/your-org/contextforge/internal/ent/databasesource"
 	"github.com/your-org/contextforge/internal/ent/project"
 	"github.com/your-org/contextforge/internal/ent/source"
 )
@@ -55,9 +56,11 @@ type SourceEdges struct {
 	Documents []*Document `json:"documents,omitempty"`
 	// Jobs holds the value of the jobs edge.
 	Jobs []*IngestionJob `json:"jobs,omitempty"`
+	// DatabaseSource holds the value of the database_source edge.
+	DatabaseSource *DatabaseSource `json:"database_source,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [3]bool
+	loadedTypes [4]bool
 }
 
 // ProjectOrErr returns the Project value or an error if the edge
@@ -87,6 +90,17 @@ func (e SourceEdges) JobsOrErr() ([]*IngestionJob, error) {
 		return e.Jobs, nil
 	}
 	return nil, &NotLoadedError{edge: "jobs"}
+}
+
+// DatabaseSourceOrErr returns the DatabaseSource value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e SourceEdges) DatabaseSourceOrErr() (*DatabaseSource, error) {
+	if e.DatabaseSource != nil {
+		return e.DatabaseSource, nil
+	} else if e.loadedTypes[3] {
+		return nil, &NotFoundError{label: databasesource.Label}
+	}
+	return nil, &NotLoadedError{edge: "database_source"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -214,6 +228,11 @@ func (_m *Source) QueryDocuments() *DocumentQuery {
 // QueryJobs queries the "jobs" edge of the Source entity.
 func (_m *Source) QueryJobs() *IngestionJobQuery {
 	return NewSourceClient(_m.config).QueryJobs(_m)
+}
+
+// QueryDatabaseSource queries the "database_source" edge of the Source entity.
+func (_m *Source) QueryDatabaseSource() *DatabaseSourceQuery {
+	return NewSourceClient(_m.config).QueryDatabaseSource(_m)
 }
 
 // Update returns a builder for updating this Source.

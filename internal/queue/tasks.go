@@ -10,13 +10,22 @@ import (
 )
 
 const (
-	TypeRepoSync = "repo:sync"
-	TypeDocEmbed = "doc:embed"
+	TypeRepoSync     = "repo:sync"
+	TypeDocEmbed     = "doc:embed"
+	TypeDatabaseSync = "database:sync"
 
 	QueueCritical = "critical"
 	QueueDefault  = "default"
 	QueueLow      = "low"
 )
+
+// DatabaseSyncPayload contains parameters for external database synchronization.
+type DatabaseSyncPayload struct {
+	JobID     uuid.UUID `json:"job_id"`
+	ProjectID uuid.UUID `json:"project_id"`
+	SourceID  uuid.UUID `json:"source_id"`
+	Mode      string    `json:"mode,omitempty"`
+}
 
 // RepoSyncPayload contains parameters for repository synchronization task.
 type RepoSyncPayload struct {
@@ -69,3 +78,18 @@ func NewDocEmbedTask(payload DocEmbedPayload) (*asynq.Task, error) {
 		asynq.Timeout(10*time.Minute),
 	), nil
 }
+
+// NewDatabaseSyncTask creates an Asynq task for database schema and data synchronization.
+func NewDatabaseSyncTask(payload DatabaseSyncPayload) (*asynq.Task, error) {
+	bytes, err := json.Marshal(payload)
+	if err != nil {
+		return nil, fmt.Errorf("marshaling database sync payload: %w", err)
+	}
+
+	return asynq.NewTask(TypeDatabaseSync, bytes,
+		asynq.Queue(QueueDefault),
+		asynq.MaxRetry(3),
+		asynq.Timeout(30*time.Minute),
+	), nil
+}
+

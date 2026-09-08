@@ -56,6 +56,56 @@ var (
 			},
 		},
 	}
+	// DatabaseSourcesColumns holds the columns for the "database_sources" table.
+	DatabaseSourcesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "database_type", Type: field.TypeString},
+		{Name: "host", Type: field.TypeString, Default: ""},
+		{Name: "port", Type: field.TypeInt, Default: 0},
+		{Name: "database_name", Type: field.TypeString, Default: ""},
+		{Name: "username", Type: field.TypeString, Default: ""},
+		{Name: "encrypted_connection_url", Type: field.TypeString},
+		{Name: "configuration", Type: field.TypeJSON, Nullable: true},
+		{Name: "status", Type: field.TypeString, Default: "created"},
+		{Name: "last_error", Type: field.TypeString, Nullable: true, Default: ""},
+		{Name: "last_synced_at", Type: field.TypeTime, Nullable: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "project_id", Type: field.TypeUUID},
+		{Name: "source_id", Type: field.TypeUUID, Unique: true},
+	}
+	// DatabaseSourcesTable holds the schema information for the "database_sources" table.
+	DatabaseSourcesTable = &schema.Table{
+		Name:       "database_sources",
+		Columns:    DatabaseSourcesColumns,
+		PrimaryKey: []*schema.Column{DatabaseSourcesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "database_sources_projects_database_sources",
+				Columns:    []*schema.Column{DatabaseSourcesColumns[13]},
+				RefColumns: []*schema.Column{ProjectsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "database_sources_sources_database_source",
+				Columns:    []*schema.Column{DatabaseSourcesColumns[14]},
+				RefColumns: []*schema.Column{SourcesColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "databasesource_project_id",
+				Unique:  false,
+				Columns: []*schema.Column{DatabaseSourcesColumns[13]},
+			},
+			{
+				Name:    "databasesource_source_id",
+				Unique:  false,
+				Columns: []*schema.Column{DatabaseSourcesColumns[14]},
+			},
+		},
+	}
 	// DocumentsColumns holds the columns for the "documents" table.
 	DocumentsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -261,9 +311,9 @@ var (
 		{Name: "id", Type: field.TypeUUID},
 		{Name: "name", Type: field.TypeString},
 		{Name: "type", Type: field.TypeString, Default: "github"},
-		{Name: "repo_owner", Type: field.TypeString},
-		{Name: "repo_name", Type: field.TypeString},
-		{Name: "branch", Type: field.TypeString, Default: "main"},
+		{Name: "repo_owner", Type: field.TypeString, Nullable: true, Default: ""},
+		{Name: "repo_name", Type: field.TypeString, Nullable: true, Default: ""},
+		{Name: "branch", Type: field.TypeString, Nullable: true, Default: "main"},
 		{Name: "last_commit_hash", Type: field.TypeString, Nullable: true, Default: ""},
 		{Name: "sync_status", Type: field.TypeEnum, Enums: []string{"idle", "queued", "syncing", "synced", "failed"}, Default: "idle"},
 		{Name: "last_synced_at", Type: field.TypeTime, Nullable: true},
@@ -289,11 +339,6 @@ var (
 				Name:    "source_project_id",
 				Unique:  false,
 				Columns: []*schema.Column{SourcesColumns[11]},
-			},
-			{
-				Name:    "source_project_id_repo_owner_repo_name_branch",
-				Unique:  true,
-				Columns: []*schema.Column{SourcesColumns[11], SourcesColumns[3], SourcesColumns[4], SourcesColumns[5]},
 			},
 		},
 	}
@@ -332,6 +377,7 @@ var (
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		AuditLogsTable,
+		DatabaseSourcesTable,
 		DocumentsTable,
 		DocumentChunksTable,
 		IngestionJobsTable,
@@ -343,6 +389,8 @@ var (
 
 func init() {
 	AuditLogsTable.ForeignKeys[0].RefTable = ProjectsTable
+	DatabaseSourcesTable.ForeignKeys[0].RefTable = ProjectsTable
+	DatabaseSourcesTable.ForeignKeys[1].RefTable = SourcesTable
 	DocumentsTable.ForeignKeys[0].RefTable = ProjectsTable
 	DocumentsTable.ForeignKeys[1].RefTable = SourcesTable
 	DocumentChunksTable.ForeignKeys[0].RefTable = DocumentsTable

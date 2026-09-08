@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/your-org/contextforge/internal/ent/auditlog"
+	"github.com/your-org/contextforge/internal/ent/databasesource"
 	"github.com/your-org/contextforge/internal/ent/document"
 	"github.com/your-org/contextforge/internal/ent/documentchunk"
 	"github.com/your-org/contextforge/internal/ent/ingestionjob"
@@ -50,6 +51,54 @@ func init() {
 	auditlogDescID := auditlogFields[0].Descriptor()
 	// auditlog.DefaultID holds the default value on creation for the id field.
 	auditlog.DefaultID = auditlogDescID.Default.(func() uuid.UUID)
+	databasesourceFields := schema.DatabaseSource{}.Fields()
+	_ = databasesourceFields
+	// databasesourceDescDatabaseType is the schema descriptor for database_type field.
+	databasesourceDescDatabaseType := databasesourceFields[3].Descriptor()
+	// databasesource.DatabaseTypeValidator is a validator for the "database_type" field. It is called by the builders before save.
+	databasesource.DatabaseTypeValidator = databasesourceDescDatabaseType.Validators[0].(func(string) error)
+	// databasesourceDescHost is the schema descriptor for host field.
+	databasesourceDescHost := databasesourceFields[4].Descriptor()
+	// databasesource.DefaultHost holds the default value on creation for the host field.
+	databasesource.DefaultHost = databasesourceDescHost.Default.(string)
+	// databasesourceDescPort is the schema descriptor for port field.
+	databasesourceDescPort := databasesourceFields[5].Descriptor()
+	// databasesource.DefaultPort holds the default value on creation for the port field.
+	databasesource.DefaultPort = databasesourceDescPort.Default.(int)
+	// databasesourceDescDatabaseName is the schema descriptor for database_name field.
+	databasesourceDescDatabaseName := databasesourceFields[6].Descriptor()
+	// databasesource.DefaultDatabaseName holds the default value on creation for the database_name field.
+	databasesource.DefaultDatabaseName = databasesourceDescDatabaseName.Default.(string)
+	// databasesourceDescUsername is the schema descriptor for username field.
+	databasesourceDescUsername := databasesourceFields[7].Descriptor()
+	// databasesource.DefaultUsername holds the default value on creation for the username field.
+	databasesource.DefaultUsername = databasesourceDescUsername.Default.(string)
+	// databasesourceDescEncryptedConnectionURL is the schema descriptor for encrypted_connection_url field.
+	databasesourceDescEncryptedConnectionURL := databasesourceFields[8].Descriptor()
+	// databasesource.EncryptedConnectionURLValidator is a validator for the "encrypted_connection_url" field. It is called by the builders before save.
+	databasesource.EncryptedConnectionURLValidator = databasesourceDescEncryptedConnectionURL.Validators[0].(func(string) error)
+	// databasesourceDescStatus is the schema descriptor for status field.
+	databasesourceDescStatus := databasesourceFields[10].Descriptor()
+	// databasesource.DefaultStatus holds the default value on creation for the status field.
+	databasesource.DefaultStatus = databasesourceDescStatus.Default.(string)
+	// databasesourceDescLastError is the schema descriptor for last_error field.
+	databasesourceDescLastError := databasesourceFields[11].Descriptor()
+	// databasesource.DefaultLastError holds the default value on creation for the last_error field.
+	databasesource.DefaultLastError = databasesourceDescLastError.Default.(string)
+	// databasesourceDescCreatedAt is the schema descriptor for created_at field.
+	databasesourceDescCreatedAt := databasesourceFields[13].Descriptor()
+	// databasesource.DefaultCreatedAt holds the default value on creation for the created_at field.
+	databasesource.DefaultCreatedAt = databasesourceDescCreatedAt.Default.(func() time.Time)
+	// databasesourceDescUpdatedAt is the schema descriptor for updated_at field.
+	databasesourceDescUpdatedAt := databasesourceFields[14].Descriptor()
+	// databasesource.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	databasesource.DefaultUpdatedAt = databasesourceDescUpdatedAt.Default.(func() time.Time)
+	// databasesource.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	databasesource.UpdateDefaultUpdatedAt = databasesourceDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// databasesourceDescID is the schema descriptor for id field.
+	databasesourceDescID := databasesourceFields[0].Descriptor()
+	// databasesource.DefaultID holds the default value on creation for the id field.
+	databasesource.DefaultID = databasesourceDescID.Default.(func() uuid.UUID)
 	documentFields := schema.Document{}.Fields()
 	_ = documentFields
 	// documentDescFilePath is the schema descriptor for file_path field.
@@ -204,12 +253,12 @@ func init() {
 	source.DefaultType = sourceDescType.Default.(string)
 	// sourceDescRepoOwner is the schema descriptor for repo_owner field.
 	sourceDescRepoOwner := sourceFields[4].Descriptor()
-	// source.RepoOwnerValidator is a validator for the "repo_owner" field. It is called by the builders before save.
-	source.RepoOwnerValidator = sourceDescRepoOwner.Validators[0].(func(string) error)
+	// source.DefaultRepoOwner holds the default value on creation for the repo_owner field.
+	source.DefaultRepoOwner = sourceDescRepoOwner.Default.(string)
 	// sourceDescRepoName is the schema descriptor for repo_name field.
 	sourceDescRepoName := sourceFields[5].Descriptor()
-	// source.RepoNameValidator is a validator for the "repo_name" field. It is called by the builders before save.
-	source.RepoNameValidator = sourceDescRepoName.Validators[0].(func(string) error)
+	// source.DefaultRepoName holds the default value on creation for the repo_name field.
+	source.DefaultRepoName = sourceDescRepoName.Default.(string)
 	// sourceDescBranch is the schema descriptor for branch field.
 	sourceDescBranch := sourceFields[6].Descriptor()
 	// source.DefaultBranch holds the default value on creation for the branch field.

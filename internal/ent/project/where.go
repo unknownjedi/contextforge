@@ -702,6 +702,29 @@ func HasSourcesWith(preds ...predicate.Source) predicate.Project {
 	})
 }
 
+// HasDatabaseSources applies the HasEdge predicate on the "database_sources" edge.
+func HasDatabaseSources() predicate.Project {
+	return predicate.Project(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, DatabaseSourcesTable, DatabaseSourcesColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasDatabaseSourcesWith applies the HasEdge predicate on the "database_sources" edge with a given conditions (other predicates).
+func HasDatabaseSourcesWith(preds ...predicate.DatabaseSource) predicate.Project {
+	return predicate.Project(func(s *sql.Selector) {
+		step := newDatabaseSourcesStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // HasDocuments applies the HasEdge predicate on the "documents" edge.
 func HasDocuments() predicate.Project {
 	return predicate.Project(func(s *sql.Selector) {

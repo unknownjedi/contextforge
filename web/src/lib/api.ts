@@ -15,6 +15,11 @@ import type {
   SourceIngestionQueued,
   UpdateProjectRequest,
   User,
+  DatabaseSource,
+  CreateDatabaseSourceRequest,
+  UpdateDatabaseSourceRequest,
+  ConnectionTestResult,
+  DatabaseMetadata,
 } from "@/types/api";
 
 const API_BASE_URL =
@@ -451,3 +456,104 @@ export async function streamChat(
     }
   }
 }
+
+// ---------------------------------------------------------------------------
+// Database Sources API
+// ---------------------------------------------------------------------------
+
+export async function testDatabaseConnection(
+  projectId: string,
+  req: { database_type: string; connection_url: string }
+): Promise<ConnectionTestResult> {
+  return apiFetch<ConnectionTestResult>(`/projects/${projectId}/sources/database/test`, {
+    method: "POST",
+    body: JSON.stringify(req),
+  });
+}
+
+export async function createDatabaseSource(
+  projectId: string,
+  req: CreateDatabaseSourceRequest
+): Promise<DatabaseSource> {
+  return apiFetch<DatabaseSource>(`/projects/${projectId}/sources/database`, {
+    method: "POST",
+    body: JSON.stringify(req),
+  });
+}
+
+export async function getDatabaseSources(projectId: string): Promise<DatabaseSource[]> {
+  return apiFetch<DatabaseSource[]>(`/projects/${projectId}/sources/database`);
+}
+
+export async function getDatabaseSource(
+  projectId: string,
+  sourceId: string
+): Promise<DatabaseSource> {
+  return apiFetch<DatabaseSource>(`/projects/${projectId}/sources/database/${sourceId}`);
+}
+
+export async function updateDatabaseSource(
+  projectId: string,
+  sourceId: string,
+  req: UpdateDatabaseSourceRequest
+): Promise<DatabaseSource> {
+  return apiFetch<DatabaseSource>(`/projects/${projectId}/sources/database/${sourceId}`, {
+    method: "PATCH",
+    body: JSON.stringify(req),
+  });
+}
+
+export async function deleteDatabaseSource(
+  projectId: string,
+  sourceId: string
+): Promise<void> {
+  return apiFetch<void>(`/projects/${projectId}/sources/database/${sourceId}`, {
+    method: "DELETE",
+  });
+}
+
+export async function testStoredDatabaseConnection(
+  projectId: string,
+  sourceId: string
+): Promise<ConnectionTestResult> {
+  return apiFetch<ConnectionTestResult>(
+    `/projects/${projectId}/sources/database/${sourceId}/test`,
+    {
+      method: "POST",
+    }
+  );
+}
+
+export async function getDatabaseMetadata(
+  projectId: string,
+  sourceId: string
+): Promise<DatabaseMetadata> {
+  return apiFetch<DatabaseMetadata>(
+    `/projects/${projectId}/sources/database/${sourceId}/metadata`
+  );
+}
+
+export async function syncDatabaseSource(
+  projectId: string,
+  sourceId: string
+): Promise<{ job_id: string; status: string }> {
+  return apiFetch<{ job_id: string; status: string }>(
+    `/projects/${projectId}/sources/database/${sourceId}/sync`,
+    {
+      method: "POST",
+    }
+  );
+}
+
+export async function getDatabaseSourceStatus(
+  projectId: string,
+  sourceId: string
+): Promise<{ source_id: string; status: string; last_error?: string; last_synced_at?: string }> {
+  return apiFetch<{
+    source_id: string;
+    status: string;
+    last_error?: string;
+    last_synced_at?: string;
+  }>(`/projects/${projectId}/sources/database/${sourceId}/status`);
+}
+

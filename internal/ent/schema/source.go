@@ -27,10 +27,13 @@ func (Source) Fields() []ent.Field {
 		field.String("type").
 			Default("github"),
 		field.String("repo_owner").
-			NotEmpty(),
+			Optional().
+			Default(""),
 		field.String("repo_name").
-			NotEmpty(),
+			Optional().
+			Default(""),
 		field.String("branch").
+			Optional().
 			Default("main"),
 		field.String("last_commit_hash").
 			Optional().
@@ -60,6 +63,8 @@ func (Source) Edges() []ent.Edge {
 			Required(),
 		edge.To("documents", Document.Type),
 		edge.To("jobs", IngestionJob.Type),
+		edge.To("database_source", DatabaseSource.Type).
+			Unique(),
 	}
 }
 
@@ -67,6 +72,5 @@ func (Source) Edges() []ent.Edge {
 func (Source) Indexes() []ent.Index {
 	return []ent.Index{
 		index.Fields("project_id"),
-		index.Fields("project_id", "repo_owner", "repo_name", "branch").Unique(),
 	}
 }

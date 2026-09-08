@@ -51,6 +51,20 @@ func (c *Client) EnqueueDocEmbed(ctx context.Context, payload DocEmbedPayload) (
 	return info, nil
 }
 
+// EnqueueDatabaseSync schedules a database synchronization task.
+func (c *Client) EnqueueDatabaseSync(ctx context.Context, payload DatabaseSyncPayload) (*asynq.TaskInfo, error) {
+	task, err := NewDatabaseSyncTask(payload)
+	if err != nil {
+		return nil, err
+	}
+
+	info, err := c.asynqClient.EnqueueContext(ctx, task)
+	if err != nil {
+		return nil, fmt.Errorf("enqueuing database sync task: %w", err)
+	}
+	return info, nil
+}
+
 // Close gracefully terminates the Asynq client.
 func (c *Client) Close() error {
 	if c.asynqClient != nil {

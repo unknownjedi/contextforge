@@ -10,6 +10,8 @@ import (
 
 	"github.com/your-org/contextforge/internal/chunk"
 	"github.com/your-org/contextforge/internal/config"
+	"github.com/your-org/contextforge/internal/connector"
+	"github.com/your-org/contextforge/internal/crypto"
 	"github.com/your-org/contextforge/internal/database"
 	"github.com/your-org/contextforge/internal/ingest"
 	"github.com/your-org/contextforge/internal/logger"
@@ -76,7 +78,24 @@ func main() {
 		log,
 	)
 
-	// 7. Initialize Asynq worker server
+	// 7. Initialize database ingestion pipeline
+	encKey, err := crypto.KeyFromHex(cfg.Auth.TokenEncryptionKey)
+	if err != nil {
+		log.Fatal("invalid token encryption key", zap.Error(err))
+	}
+	dbPipeline := worker.NewDatabaseIngestionPipeline(
+		db.EntClient,
+		connector.DefaultRegistry(),
+		encKey,
+		docRepo,
+		vectorRepo,
+		jobRepo,
+		embedder,
+		chunk.NewChunker(chunk.DefaultOptions()),
+		log,
+	)
+
+	// 8. Initialize Asynq worker server
 	workerServer, err := queue.NewWorkerServer(queue.WorkerConfig{
 		RedisURL:    cfg.Redis.URL,
 		Concurrency: 10,
@@ -87,6 +106,7 @@ func main() {
 
 	// Register task handlers
 	workerServer.RegisterHandler(queue.TypeRepoSync, pipeline.ProcessSyncTask)
+	workerServer.RegisterHandler(queue.TypeDatabaseSync, dbPipeline.ProcessDatabaseSyncTask)
 
 	// 8. Handle graceful shutdown
 	quit := make(chan os.Signal, 1)

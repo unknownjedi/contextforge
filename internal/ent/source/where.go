@@ -311,6 +311,16 @@ func RepoOwnerHasSuffix(v string) predicate.Source {
 	return predicate.Source(sql.FieldHasSuffix(FieldRepoOwner, v))
 }
 
+// RepoOwnerIsNil applies the IsNil predicate on the "repo_owner" field.
+func RepoOwnerIsNil() predicate.Source {
+	return predicate.Source(sql.FieldIsNull(FieldRepoOwner))
+}
+
+// RepoOwnerNotNil applies the NotNil predicate on the "repo_owner" field.
+func RepoOwnerNotNil() predicate.Source {
+	return predicate.Source(sql.FieldNotNull(FieldRepoOwner))
+}
+
 // RepoOwnerEqualFold applies the EqualFold predicate on the "repo_owner" field.
 func RepoOwnerEqualFold(v string) predicate.Source {
 	return predicate.Source(sql.FieldEqualFold(FieldRepoOwner, v))
@@ -376,6 +386,16 @@ func RepoNameHasSuffix(v string) predicate.Source {
 	return predicate.Source(sql.FieldHasSuffix(FieldRepoName, v))
 }
 
+// RepoNameIsNil applies the IsNil predicate on the "repo_name" field.
+func RepoNameIsNil() predicate.Source {
+	return predicate.Source(sql.FieldIsNull(FieldRepoName))
+}
+
+// RepoNameNotNil applies the NotNil predicate on the "repo_name" field.
+func RepoNameNotNil() predicate.Source {
+	return predicate.Source(sql.FieldNotNull(FieldRepoName))
+}
+
 // RepoNameEqualFold applies the EqualFold predicate on the "repo_name" field.
 func RepoNameEqualFold(v string) predicate.Source {
 	return predicate.Source(sql.FieldEqualFold(FieldRepoName, v))
@@ -439,6 +459,16 @@ func BranchHasPrefix(v string) predicate.Source {
 // BranchHasSuffix applies the HasSuffix predicate on the "branch" field.
 func BranchHasSuffix(v string) predicate.Source {
 	return predicate.Source(sql.FieldHasSuffix(FieldBranch, v))
+}
+
+// BranchIsNil applies the IsNil predicate on the "branch" field.
+func BranchIsNil() predicate.Source {
+	return predicate.Source(sql.FieldIsNull(FieldBranch))
+}
+
+// BranchNotNil applies the NotNil predicate on the "branch" field.
+func BranchNotNil() predicate.Source {
+	return predicate.Source(sql.FieldNotNull(FieldBranch))
 }
 
 // BranchEqualFold applies the EqualFold predicate on the "branch" field.
@@ -737,6 +767,29 @@ func HasJobs() predicate.Source {
 func HasJobsWith(preds ...predicate.IngestionJob) predicate.Source {
 	return predicate.Source(func(s *sql.Selector) {
 		step := newJobsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasDatabaseSource applies the HasEdge predicate on the "database_source" edge.
+func HasDatabaseSource() predicate.Source {
+	return predicate.Source(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2O, false, DatabaseSourceTable, DatabaseSourceColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasDatabaseSourceWith applies the HasEdge predicate on the "database_source" edge with a given conditions (other predicates).
+func HasDatabaseSourceWith(preds ...predicate.DatabaseSource) predicate.Source {
+	return predicate.Source(func(s *sql.Selector) {
+		step := newDatabaseSourceStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

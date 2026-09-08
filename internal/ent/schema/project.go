@@ -58,6 +58,7 @@ func (Project) Edges() []ent.Edge {
 			Unique().
 			Required(),
 		edge.To("sources", Source.Type),
+		edge.To("database_sources", DatabaseSource.Type),
 		edge.To("documents", Document.Type),
 		edge.To("chunks", DocumentChunk.Type),
 		edge.To("jobs", IngestionJob.Type),

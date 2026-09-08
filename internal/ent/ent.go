@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/your-org/contextforge/internal/ent/auditlog"
+	"github.com/your-org/contextforge/internal/ent/databasesource"
 	"github.com/your-org/contextforge/internal/ent/document"
 	"github.com/your-org/contextforge/internal/ent/documentchunk"
 	"github.com/your-org/contextforge/internal/ent/ingestionjob"
@@ -79,13 +80,14 @@ var (
 func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
-			auditlog.Table:      auditlog.ValidColumn,
-			document.Table:      document.ValidColumn,
-			documentchunk.Table: documentchunk.ValidColumn,
-			ingestionjob.Table:  ingestionjob.ValidColumn,
-			project.Table:       project.ValidColumn,
-			source.Table:        source.ValidColumn,
-			user.Table:          user.ValidColumn,
+			auditlog.Table:       auditlog.ValidColumn,
+			databasesource.Table: databasesource.ValidColumn,
+			document.Table:       document.ValidColumn,
+			documentchunk.Table:  documentchunk.ValidColumn,
+			ingestionjob.Table:   ingestionjob.ValidColumn,
+			project.Table:        project.ValidColumn,
+			source.Table:         source.ValidColumn,
+			user.Table:           user.ValidColumn,
 		})
 	})
 	return columnCheck(t, c)

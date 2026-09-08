@@ -27,10 +27,13 @@ import {
   ShieldCheck,
   ChevronDown,
   ChevronUp,
+  Server,
+  Table,
 } from "lucide-react";
 import type {
   Project,
   Source,
+  DatabaseSource,
   Document,
   DocumentChunk,
   IngestionJob,
@@ -40,6 +43,9 @@ import type {
 import {
   getProject,
   getSources,
+  getDatabaseSources,
+  syncDatabaseSource,
+  deleteDatabaseSource,
   getDocuments,
   getDocument,
   createSource,
@@ -49,6 +55,7 @@ import {
 } from "@/lib/api";
 import { SyncStatusBadge } from "@/components/sync-status-badge";
 import { AddSourceModal } from "@/components/add-source-modal";
+import { AddDatabaseSourceModal } from "@/components/add-database-source-modal";
 import { JobStatusCard } from "@/components/job-status-card";
 import { ChunkInspectorModal } from "@/components/chunk-inspector-modal";
 import { formatDate } from "@/lib/utils";
@@ -62,12 +69,15 @@ export default function ProjectDetailPage() {
 
   const [project, setProject] = useState<Project | null>(null);
   const [sources, setSources] = useState<Source[]>([]);
+  const [dbSources, setDbSources] = useState<DatabaseSource[]>([]);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncingSourceIds, setSyncingSourceIds] = useState<Record<string, boolean>>({});
+  const [syncingDbSourceIds, setSyncingDbSourceIds] = useState<Record<string, boolean>>({});
   const [activeJob, setActiveJob] = useState<IngestionJob | null>(null);
   const [recentJobs, setRecentJobs] = useState<IngestionJob[]>([]);
   const [isAddSourceModalOpen, setIsAddSourceModalOpen] = useState(false);
+  const [isAddDbSourceModalOpen, setIsAddDbSourceModalOpen] = useState(false);
   const [showInlineAddSource, setShowInlineAddSource] = useState(false);
   const [docFilter, setDocFilter] = useState("");
   const [docLanguageFilter, setDocLanguageFilter] = useState("all");
@@ -91,9 +101,10 @@ export default function ProjectDetailPage() {
     setLoading(true);
     setError(null);
     try {
-      const [projData, sourcesData, docsData] = await Promise.all([
+      const [projData, sourcesData, dbSourcesData, docsData] = await Promise.all([
         getProject(projectId).catch(() => null),
         getSources(projectId).catch(() => []),
+        getDatabaseSources(projectId).catch(() => []),
         getDocuments(projectId, { page: 1, page_size: 100 }).catch(() => ({
           items: [],
           total: 0,
@@ -153,6 +164,10 @@ export default function ProjectDetailPage() {
             created_at: new Date(Date.now() - 86400000 * 2).toISOString(),
           },
         ]);
+      }
+
+      if (dbSourcesData) {
+        setDbSources(dbSourcesData);
       }
 
       if (docsData && docsData.items && docsData.items.length > 0) {
@@ -259,6 +274,48 @@ export default function ProjectDetailPage() {
       setSources((prev) => prev.filter((s) => s.id !== sourceId));
     } catch (err: any) {
       alert(`Failed to delete source: ${err.message}`);
+    }
+  };
+
+  // Handle database source sync
+  const handleTriggerDbSync = async (dbSourceId: string) => {
+    setSyncingDbSourceIds((prev) => ({ ...prev, [dbSourceId]: true }));
+    try {
+      const res = await syncDatabaseSource(projectId, dbSourceId);
+      if (res && res.job_id) {
+        const newJob: IngestionJob = {
+          id: res.job_id,
+          project_id: projectId,
+          source_id: dbSourceId,
+          status: "running",
+          progress_percent: 5,
+          created_at: new Date().toISOString(),
+        };
+        setActiveJob(newJob);
+        setRecentJobs((prev) => [newJob, ...prev]);
+      }
+      setDbSources((prev) =>
+        prev.map((s) =>
+          s.id === dbSourceId ? { ...s, status: "syncing" } : s
+        )
+      );
+    } catch (err: any) {
+      alert(`Database sync trigger failed: ${err.message}`);
+    } finally {
+      setSyncingDbSourceIds((prev) => ({ ...prev, [dbSourceId]: false }));
+    }
+  };
+
+  // Handle database source deletion
+  const handleDeleteDbSource = async (dbSourceId: string, name: string) => {
+    if (!confirm(`Are you sure you want to disconnect database source "${name}" and purge its indexed vectors?`)) {
+      return;
+    }
+    try {
+      await deleteDatabaseSource(projectId, dbSourceId);
+      setDbSources((prev) => prev.filter((s) => s.id !== dbSourceId));
+    } catch (err: any) {
+      alert(`Failed to delete database source: ${err.message}`);
     }
   };
 
@@ -525,9 +582,16 @@ func ExecuteContextQuery(ctx context.Context) error {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="rounded-xl border border-zinc-850 bg-zinc-900/50 p-4 backdrop-blur-sm">
           <span className="text-xs text-zinc-400 block uppercase font-medium">
-            Connected Repos
+            Knowledge Sources
           </span>
-          <p className="text-2xl font-bold text-white mt-1">{sources.length}</p>
+          <p className="text-2xl font-bold text-white mt-1">
+            {sources.length + dbSources.length}
+          </p>
+          <div className="flex items-center gap-2 mt-1 text-[11px] text-zinc-400">
+            <span>{sources.length} Repos</span>
+            <span>•</span>
+            <span>{dbSources.length} DBs</span>
+          </div>
         </div>
         <div className="rounded-xl border border-zinc-850 bg-zinc-900/50 p-4 backdrop-blur-sm">
           <span className="text-xs text-zinc-400 block uppercase font-medium">
@@ -566,7 +630,7 @@ func ExecuteContextQuery(ctx context.Context) error {
           }`}
         >
           <GitFork className="w-4 h-4" />
-          Sources & Ingestion ({sources.length})
+          Sources & Ingestion ({sources.length + dbSources.length})
         </button>
 
         <button
@@ -624,6 +688,13 @@ func ExecuteContextQuery(ctx context.Context) error {
               </p>
             </div>
             <div className="flex items-center gap-2">
+              <button
+                onClick={() => setIsAddDbSourceModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-purple-800/60 bg-purple-950/40 text-purple-300 hover:bg-purple-900/50 transition-colors shadow-sm"
+              >
+                <Database className="w-3.5 h-3.5 text-purple-400" />
+                Add Database
+              </button>
               <button
                 onClick={() => setShowInlineAddSource(!showInlineAddSource)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
@@ -860,6 +931,152 @@ func ExecuteContextQuery(ctx context.Context) error {
               })}
             </div>
           )}
+
+          {/* External Database Sources Section */}
+          <div className="pt-6 border-t border-zinc-800/80">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                  <Database className="h-5 w-5 text-purple-400" />
+                  External Database Sources
+                </h2>
+                <p className="text-xs text-zinc-400">
+                  Relational databases introspected for DDL schemas and sampled table rows for hybrid RAG.
+                </p>
+              </div>
+              <button
+                onClick={() => setIsAddDbSourceModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-purple-600 hover:bg-purple-500 rounded-lg transition-colors shadow-sm"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Add Database
+              </button>
+            </div>
+
+            {dbSources.length === 0 ? (
+              <div className="rounded-xl border border-zinc-850 bg-zinc-900/30 p-8 text-center">
+                <Database className="mx-auto h-9 w-9 text-zinc-600" />
+                <h3 className="mt-3 text-sm font-semibold text-zinc-200">
+                  No databases connected
+                </h3>
+                <p className="mt-1 text-xs text-zinc-400 max-w-md mx-auto">
+                  Connect PostgreSQL, CockroachDB, MySQL, MariaDB, SQLite, or SQL Server. ContextForge normalizes schemas into searchable knowledge docs with line anchoring.
+                </p>
+                <button
+                  onClick={() => setIsAddDbSourceModalOpen(true)}
+                  className="mt-4 inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium text-purple-200 bg-purple-950/60 hover:bg-purple-900/60 border border-purple-800/50 rounded-lg transition-colors"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Connect Database
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {dbSources.map((db) => {
+                  const isSyncing = syncingDbSourceIds[db.id] || db.status === "syncing";
+                  const engineColors: Record<string, string> = {
+                    postgres: "bg-blue-950/80 text-blue-300 border-blue-800/50",
+                    cockroachdb: "bg-violet-950/80 text-violet-300 border-violet-800/50",
+                    mysql: "bg-amber-950/80 text-amber-300 border-amber-800/50",
+                    mariadb: "bg-teal-950/80 text-teal-300 border-teal-800/50",
+                    sqlite: "bg-emerald-950/80 text-emerald-300 border-emerald-800/50",
+                    sqlserver: "bg-rose-950/80 text-rose-300 border-rose-800/50",
+                  };
+                  const colorClass = engineColors[db.database_type] || "bg-zinc-800 text-zinc-300 border-zinc-700";
+
+                  return (
+                    <div
+                      key={db.id}
+                      className="rounded-xl border border-zinc-850 bg-zinc-900/40 p-4 hover:border-zinc-750 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                    >
+                      <div className="space-y-2 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2.5">
+                          <span className="font-semibold text-zinc-100 text-sm">
+                            {db.name}
+                          </span>
+                          <span className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-mono border ${colorClass}`}>
+                            <Server className="w-3 h-3" />
+                            {db.database_type.toUpperCase()}
+                          </span>
+                          <span
+                            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium border ${
+                              db.status === "ready"
+                                ? "bg-emerald-950/50 text-emerald-400 border-emerald-800/50"
+                                : db.status === "syncing"
+                                ? "bg-blue-950/50 text-blue-400 border-blue-800/50 animate-pulse"
+                                : db.status === "failed"
+                                ? "bg-rose-950/50 text-rose-400 border-rose-800/50"
+                                : "bg-zinc-800 text-zinc-400 border-zinc-700"
+                            }`}
+                          >
+                            {db.status === "syncing" && (
+                              <RefreshCw className="w-2.5 h-2.5 animate-spin" />
+                            )}
+                            {db.status.toUpperCase()}
+                          </span>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-3 text-xs text-zinc-400 font-mono">
+                          {db.database_name && (
+                            <span>
+                              DB: <code className="text-zinc-300">{db.database_name}</code>
+                            </span>
+                          )}
+                          {db.host && (
+                            <>
+                              <span>•</span>
+                              <span>
+                                Host: <code className="text-zinc-300">{db.host}:{db.port}</code>
+                              </span>
+                            </>
+                          )}
+                          {db.configuration?.mode && (
+                            <>
+                              <span>•</span>
+                              <span className="text-zinc-300">
+                                Mode: {db.configuration.mode}
+                              </span>
+                            </>
+                          )}
+                          <span>•</span>
+                          <span className="font-sans">
+                            Last synced: {formatDate(db.last_synced_at || db.created_at)}
+                          </span>
+                        </div>
+
+                        {db.last_error && (
+                          <div className="rounded bg-rose-950/30 border border-rose-800/40 px-2.5 py-1 text-[11px] text-rose-300">
+                            {db.last_error}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                        <button
+                          onClick={() => handleTriggerDbSync(db.id)}
+                          disabled={isSyncing}
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-200 hover:text-white bg-zinc-800 hover:bg-zinc-750 rounded-lg border border-zinc-700 transition-colors disabled:opacity-50"
+                          title="Trigger database schema and data sync"
+                        >
+                          <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin text-purple-400" : ""}`} />
+                          Sync Now
+                        </button>
+
+                        <button
+                          onClick={() => handleDeleteDbSource(db.id, db.name)}
+                          className="p-1.5 text-zinc-500 hover:text-rose-400 hover:bg-rose-950/30 rounded-lg transition-colors"
+                          title="Disconnect database source"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -1049,6 +1266,18 @@ func ExecuteContextQuery(ctx context.Context) error {
         isOpen={isAddSourceModalOpen}
         onClose={() => setIsAddSourceModalOpen(false)}
         onSuccess={() => loadData()}
+      />
+
+      {/* Add Database Source Modal */}
+      <AddDatabaseSourceModal
+        projectId={projectId}
+        isOpen={isAddDbSourceModalOpen}
+        onClose={() => setIsAddDbSourceModalOpen(false)}
+        onSuccess={(newDb) => {
+          setDbSources((prev) => [newDb, ...prev]);
+          setIsAddDbSourceModalOpen(false);
+          loadData();
+        }}
       />
 
       {/* Chunk Inspector Modal */}

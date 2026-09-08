@@ -9,6 +9,9 @@ import (
 // AuditLog is the predicate function for auditlog builders.
 type AuditLog func(*sql.Selector)
 
+// DatabaseSource is the predicate function for databasesource builders.
+type DatabaseSource func(*sql.Selector)
+
 // Document is the predicate function for document builders.
 type Document func(*sql.Selector)
 

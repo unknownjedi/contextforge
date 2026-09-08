@@ -21,6 +21,18 @@ func (f AuditLogFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, er
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.AuditLogMutation", m)
 }
 
+// The DatabaseSourceFunc type is an adapter to allow the use of ordinary
+// function as DatabaseSource mutator.
+type DatabaseSourceFunc func(context.Context, *ent.DatabaseSourceMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f DatabaseSourceFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.DatabaseSourceMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.DatabaseSourceMutation", m)
+}
+
 // The DocumentFunc type is an adapter to allow the use of ordinary
 // function as Document mutator.
 type DocumentFunc func(context.Context, *ent.DocumentMutation) (ent.Value, error)

@@ -280,6 +280,175 @@ paths:
                 $ref: '#/components/schemas/IngestionJob'
 
   # ---------------------------------------------------------------------------
+  # Database Sources
+  # ---------------------------------------------------------------------------
+  /projects/{id}/sources/database/test:
+    parameters:
+      - $ref: '#/components/parameters/ProjectIDPath'
+    post:
+      summary: Test Raw Database Connection
+      description: Tests connection to an external database using credentials provided in the request without storing them.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TestConnectionRequest'
+      responses:
+        '200':
+          description: Connection test outcome.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConnectionTestResult'
+
+  /projects/{id}/sources/database:
+    parameters:
+      - $ref: '#/components/parameters/ProjectIDPath'
+    get:
+      summary: List Database Sources
+      description: Lists all external database knowledge sources attached to the project.
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/DatabaseSource' }
+    post:
+      summary: Create Database Source
+      description: Registers an external database knowledge source with encrypted credentials and tests connection before saving.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDatabaseSourceRequest'
+      responses:
+        '201':
+          description: Database source registered.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatabaseSource'
+
+  /projects/{id}/sources/database/{source_id}:
+    parameters:
+      - $ref: '#/components/parameters/ProjectIDPath'
+      - name: source_id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Get Database Source
+      description: Retrieves sanitized metadata for a specific database source.
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatabaseSource'
+        '404':
+          description: Source not found.
+    patch:
+      summary: Update Database Source
+      description: Updates display name or ingestion configuration for a database source.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateDatabaseSourceRequest'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatabaseSource'
+    delete:
+      summary: Delete Database Source
+      description: Deletes database source and triggers cascade removal of documents, vectors, and sync jobs.
+      responses:
+        '204':
+          description: Source deleted successfully.
+
+  /projects/{id}/sources/database/{source_id}/test:
+    parameters:
+      - $ref: '#/components/parameters/ProjectIDPath'
+      - name: source_id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Test Stored Database Connection
+      description: Tests connection to an external database using stored encrypted credentials.
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConnectionTestResult'
+
+  /projects/{id}/sources/database/{source_id}/metadata:
+    parameters:
+      - $ref: '#/components/parameters/ProjectIDPath'
+      - name: source_id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Discover Database Metadata
+      description: Introspects schemas, tables, columns, constraints, and indexes from the external database.
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatabaseMetadata'
+
+  /projects/{id}/sources/database/{source_id}/sync:
+    parameters:
+      - $ref: '#/components/parameters/ProjectIDPath'
+      - name: source_id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Trigger Database Synchronization
+      description: Enqueues an asynchronous database schema/row ingestion job.
+      responses:
+        '202':
+          description: Sync job enqueued.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  job_id: { type: string, format: uuid }
+                  status: { type: string, example: "pending" }
+
+  /projects/{id}/sources/database/{source_id}/status:
+    parameters:
+      - $ref: '#/components/parameters/ProjectIDPath'
+      - name: source_id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Get Database Sync Status
+      description: Retrieves the current status, last error, and last synchronization timestamp for the database source.
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  source_id: { type: string, format: uuid }
+                  status: { type: string, example: "ready" }
+                  last_error: { type: string }
+                  last_synced_at: { type: string, format: date-time }
+
+  # ---------------------------------------------------------------------------
   # Documents & Chunks
   # ---------------------------------------------------------------------------
   /projects/{id}/documents:
@@ -661,3 +830,126 @@ components:
           items: { $ref: '#/components/schemas/Citation' }
         tokens_used: { type: integer, example: 512 }
         duration_ms: { type: integer, example: 1250 }
+
+    TestConnectionRequest:
+      type: object
+      required: [database_type, connection_url]
+      properties:
+        database_type:
+          type: string
+          enum: [postgres, mysql, mariadb, sqlite, sqlserver, cockroachdb]
+        connection_url:
+          type: string
+          example: "postgresql://user:password@host:5432/dbname"
+
+    ConnectionTestResult:
+      type: object
+      required: [success, database_type]
+      properties:
+        success: { type: boolean }
+        database_type: { type: string }
+        database_version: { type: string }
+        latency_ms: { type: integer }
+        error_message: { type: string }
+
+    DatabaseSource:
+      type: object
+      required: [id, source_id, project_id, name, database_type, status, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        source_id: { type: string, format: uuid }
+        project_id: { type: string, format: uuid }
+        name: { type: string, example: "Production PostgreSQL" }
+        database_type:
+          type: string
+          enum: [postgres, mysql, mariadb, sqlite, sqlserver, cockroachdb]
+        host: { type: string, example: "db.example.com" }
+        port: { type: integer, example: 5432 }
+        database_name: { type: string, example: "app_db" }
+        username: { type: string, example: "readonly_user" }
+        configuration: { type: object }
+        status:
+          type: string
+          enum: [created, configured, syncing, ready, failed]
+        last_error: { type: string }
+        last_synced_at: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    CreateDatabaseSourceRequest:
+      type: object
+      required: [name, database_type, connection_url]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        database_type:
+          type: string
+          enum: [postgres, mysql, mariadb, sqlite, sqlserver, cockroachdb]
+        connection_url: { type: string }
+        configuration: { type: object }
+
+    UpdateDatabaseSourceRequest:
+      type: object
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        configuration: { type: object }
+
+    ColumnMetadata:
+      type: object
+      required: [name, data_type, nullable, position]
+      properties:
+        name: { type: string }
+        data_type: { type: string }
+        nullable: { type: boolean }
+        default_value: { type: string }
+        comment: { type: string }
+        position: { type: integer }
+        is_primary_key: { type: boolean }
+        is_sensitive: { type: boolean }
+
+    ForeignKeyMetadata:
+      type: object
+      required: [columns, referenced_schema, referenced_table, referenced_columns]
+      properties:
+        name: { type: string }
+        columns: { type: array, items: { type: string } }
+        referenced_schema: { type: string }
+        referenced_table: { type: string }
+        referenced_columns: { type: array, items: { type: string } }
+
+    IndexMetadata:
+      type: object
+      required: [name, columns, unique]
+      properties:
+        name: { type: string }
+        columns: { type: array, items: { type: string } }
+        unique: { type: boolean }
+
+    TableMetadata:
+      type: object
+      required: [schema, name, type, columns]
+      properties:
+        schema: { type: string }
+        name: { type: string }
+        type: { type: string, enum: [table, view] }
+        comment: { type: string }
+        columns: { type: array, items: { $ref: '#/components/schemas/ColumnMetadata' } }
+        primary_key: { type: array, items: { type: string } }
+        foreign_keys: { type: array, items: { $ref: '#/components/schemas/ForeignKeyMetadata' } }
+        indexes: { type: array, items: { $ref: '#/components/schemas/IndexMetadata' } }
+
+    SchemaMetadata:
+      type: object
+      required: [name, tables]
+      properties:
+        name: { type: string }
+        tables: { type: array, items: { $ref: '#/components/schemas/TableMetadata' } }
+
+    DatabaseMetadata:
+      type: object
+      required: [database_type, database_name, schemas]
+      properties:
+        database_type: { type: string }
+        database_name: { type: string }
+        version: { type: string }
+        schemas: { type: array, items: { $ref: '#/components/schemas/SchemaMetadata' } }
+

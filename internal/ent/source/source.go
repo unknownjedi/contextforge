@@ -44,6 +44,8 @@ const (
 	EdgeDocuments = "documents"
 	// EdgeJobs holds the string denoting the jobs edge name in mutations.
 	EdgeJobs = "jobs"
+	// EdgeDatabaseSource holds the string denoting the database_source edge name in mutations.
+	EdgeDatabaseSource = "database_source"
 	// Table holds the table name of the source in the database.
 	Table = "sources"
 	// ProjectTable is the table that holds the project relation/edge.
@@ -67,6 +69,13 @@ const (
 	JobsInverseTable = "ingestion_jobs"
 	// JobsColumn is the table column denoting the jobs relation/edge.
 	JobsColumn = "source_id"
+	// DatabaseSourceTable is the table that holds the database_source relation/edge.
+	DatabaseSourceTable = "database_sources"
+	// DatabaseSourceInverseTable is the table name for the DatabaseSource entity.
+	// It exists in this package in order to avoid circular dependency with the "databasesource" package.
+	DatabaseSourceInverseTable = "database_sources"
+	// DatabaseSourceColumn is the table column denoting the database_source relation/edge.
+	DatabaseSourceColumn = "source_id"
 )
 
 // Columns holds all SQL columns for source fields.
@@ -100,10 +109,10 @@ var (
 	NameValidator func(string) error
 	// DefaultType holds the default value on creation for the "type" field.
 	DefaultType string
-	// RepoOwnerValidator is a validator for the "repo_owner" field. It is called by the builders before save.
-	RepoOwnerValidator func(string) error
-	// RepoNameValidator is a validator for the "repo_name" field. It is called by the builders before save.
-	RepoNameValidator func(string) error
+	// DefaultRepoOwner holds the default value on creation for the "repo_owner" field.
+	DefaultRepoOwner string
+	// DefaultRepoName holds the default value on creation for the "repo_name" field.
+	DefaultRepoName string
 	// DefaultBranch holds the default value on creation for the "branch" field.
 	DefaultBranch string
 	// DefaultLastCommitHash holds the default value on creation for the "last_commit_hash" field.
@@ -244,6 +253,13 @@ func ByJobs(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newJobsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByDatabaseSourceField orders the results by database_source field.
+func ByDatabaseSourceField(field string, opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newDatabaseSourceStep(), sql.OrderByField(field, opts...))
+	}
+}
 func newProjectStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -263,5 +279,12 @@ func newJobsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(JobsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, JobsTable, JobsColumn),
+	)
+}
+func newDatabaseSourceStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(DatabaseSourceInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2O, false, DatabaseSourceTable, DatabaseSourceColumn),
 	)
 }

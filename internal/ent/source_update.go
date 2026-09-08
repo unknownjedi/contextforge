@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
+	"github.com/your-org/contextforge/internal/ent/databasesource"
 	"github.com/your-org/contextforge/internal/ent/document"
 	"github.com/your-org/contextforge/internal/ent/ingestionjob"
 	"github.com/your-org/contextforge/internal/ent/predicate"
@@ -88,6 +89,12 @@ func (_u *SourceUpdate) SetNillableRepoOwner(v *string) *SourceUpdate {
 	return _u
 }
 
+// ClearRepoOwner clears the value of the "repo_owner" field.
+func (_u *SourceUpdate) ClearRepoOwner() *SourceUpdate {
+	_u.mutation.ClearRepoOwner()
+	return _u
+}
+
 // SetRepoName sets the "repo_name" field.
 func (_u *SourceUpdate) SetRepoName(v string) *SourceUpdate {
 	_u.mutation.SetRepoName(v)
@@ -102,6 +109,12 @@ func (_u *SourceUpdate) SetNillableRepoName(v *string) *SourceUpdate {
 	return _u
 }
 
+// ClearRepoName clears the value of the "repo_name" field.
+func (_u *SourceUpdate) ClearRepoName() *SourceUpdate {
+	_u.mutation.ClearRepoName()
+	return _u
+}
+
 // SetBranch sets the "branch" field.
 func (_u *SourceUpdate) SetBranch(v string) *SourceUpdate {
 	_u.mutation.SetBranch(v)
@@ -113,6 +126,12 @@ func (_u *SourceUpdate) SetNillableBranch(v *string) *SourceUpdate {
 	if v != nil {
 		_u.SetBranch(*v)
 	}
+	return _u
+}
+
+// ClearBranch clears the value of the "branch" field.
+func (_u *SourceUpdate) ClearBranch() *SourceUpdate {
+	_u.mutation.ClearBranch()
 	return _u
 }
 
@@ -211,6 +230,25 @@ func (_u *SourceUpdate) AddJobs(v ...*IngestionJob) *SourceUpdate {
 	return _u.AddJobIDs(ids...)
 }
 
+// SetDatabaseSourceID sets the "database_source" edge to the DatabaseSource entity by ID.
+func (_u *SourceUpdate) SetDatabaseSourceID(id uuid.UUID) *SourceUpdate {
+	_u.mutation.SetDatabaseSourceID(id)
+	return _u
+}
+
+// SetNillableDatabaseSourceID sets the "database_source" edge to the DatabaseSource entity by ID if the given value is not nil.
+func (_u *SourceUpdate) SetNillableDatabaseSourceID(id *uuid.UUID) *SourceUpdate {
+	if id != nil {
+		_u = _u.SetDatabaseSourceID(*id)
+	}
+	return _u
+}
+
+// SetDatabaseSource sets the "database_source" edge to the DatabaseSource entity.
+func (_u *SourceUpdate) SetDatabaseSource(v *DatabaseSource) *SourceUpdate {
+	return _u.SetDatabaseSourceID(v.ID)
+}
+
 // Mutation returns the SourceMutation object of the builder.
 func (_u *SourceUpdate) Mutation() *SourceMutation {
 	return _u.mutation
@@ -264,6 +302,12 @@ func (_u *SourceUpdate) RemoveJobs(v ...*IngestionJob) *SourceUpdate {
 	return _u.RemoveJobIDs(ids...)
 }
 
+// ClearDatabaseSource clears the "database_source" edge to the DatabaseSource entity.
+func (_u *SourceUpdate) ClearDatabaseSource() *SourceUpdate {
+	_u.mutation.ClearDatabaseSource()
+	return _u
+}
+
 // Save executes the query and returns the number of nodes affected by the update operation.
 func (_u *SourceUpdate) Save(ctx context.Context) (int, error) {
 	_u.defaults()
@@ -307,16 +351,6 @@ func (_u *SourceUpdate) check() error {
 			return &ValidationError{Name: "name", err: fmt.Errorf(`ent: validator failed for field "Source.name": %w`, err)}
 		}
 	}
-	if v, ok := _u.mutation.RepoOwner(); ok {
-		if err := source.RepoOwnerValidator(v); err != nil {
-			return &ValidationError{Name: "repo_owner", err: fmt.Errorf(`ent: validator failed for field "Source.repo_owner": %w`, err)}
-		}
-	}
-	if v, ok := _u.mutation.RepoName(); ok {
-		if err := source.RepoNameValidator(v); err != nil {
-			return &ValidationError{Name: "repo_name", err: fmt.Errorf(`ent: validator failed for field "Source.repo_name": %w`, err)}
-		}
-	}
 	if v, ok := _u.mutation.SyncStatus(); ok {
 		if err := source.SyncStatusValidator(v); err != nil {
 			return &ValidationError{Name: "sync_status", err: fmt.Errorf(`ent: validator failed for field "Source.sync_status": %w`, err)}
@@ -349,11 +383,20 @@ func (_u *SourceUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.RepoOwner(); ok {
 		_spec.SetField(source.FieldRepoOwner, field.TypeString, value)
 	}
+	if _u.mutation.RepoOwnerCleared() {
+		_spec.ClearField(source.FieldRepoOwner, field.TypeString)
+	}
 	if value, ok := _u.mutation.RepoName(); ok {
 		_spec.SetField(source.FieldRepoName, field.TypeString, value)
 	}
+	if _u.mutation.RepoNameCleared() {
+		_spec.ClearField(source.FieldRepoName, field.TypeString)
+	}
 	if value, ok := _u.mutation.Branch(); ok {
 		_spec.SetField(source.FieldBranch, field.TypeString, value)
+	}
+	if _u.mutation.BranchCleared() {
+		_spec.ClearField(source.FieldBranch, field.TypeString)
 	}
 	if value, ok := _u.mutation.LastCommitHash(); ok {
 		_spec.SetField(source.FieldLastCommitHash, field.TypeString, value)
@@ -492,6 +535,35 @@ func (_u *SourceUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.DatabaseSourceCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   source.DatabaseSourceTable,
+			Columns: []string{source.DatabaseSourceColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(databasesource.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.DatabaseSourceIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   source.DatabaseSourceTable,
+			Columns: []string{source.DatabaseSourceColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(databasesource.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{source.Label}
@@ -568,6 +640,12 @@ func (_u *SourceUpdateOne) SetNillableRepoOwner(v *string) *SourceUpdateOne {
 	return _u
 }
 
+// ClearRepoOwner clears the value of the "repo_owner" field.
+func (_u *SourceUpdateOne) ClearRepoOwner() *SourceUpdateOne {
+	_u.mutation.ClearRepoOwner()
+	return _u
+}
+
 // SetRepoName sets the "repo_name" field.
 func (_u *SourceUpdateOne) SetRepoName(v string) *SourceUpdateOne {
 	_u.mutation.SetRepoName(v)
@@ -582,6 +660,12 @@ func (_u *SourceUpdateOne) SetNillableRepoName(v *string) *SourceUpdateOne {
 	return _u
 }
 
+// ClearRepoName clears the value of the "repo_name" field.
+func (_u *SourceUpdateOne) ClearRepoName() *SourceUpdateOne {
+	_u.mutation.ClearRepoName()
+	return _u
+}
+
 // SetBranch sets the "branch" field.
 func (_u *SourceUpdateOne) SetBranch(v string) *SourceUpdateOne {
 	_u.mutation.SetBranch(v)
@@ -593,6 +677,12 @@ func (_u *SourceUpdateOne) SetNillableBranch(v *string) *SourceUpdateOne {
 	if v != nil {
 		_u.SetBranch(*v)
 	}
+	return _u
+}
+
+// ClearBranch clears the value of the "branch" field.
+func (_u *SourceUpdateOne) ClearBranch() *SourceUpdateOne {
+	_u.mutation.ClearBranch()
 	return _u
 }
 
@@ -691,6 +781,25 @@ func (_u *SourceUpdateOne) AddJobs(v ...*IngestionJob) *SourceUpdateOne {
 	return _u.AddJobIDs(ids...)
 }
 
+// SetDatabaseSourceID sets the "database_source" edge to the DatabaseSource entity by ID.
+func (_u *SourceUpdateOne) SetDatabaseSourceID(id uuid.UUID) *SourceUpdateOne {
+	_u.mutation.SetDatabaseSourceID(id)
+	return _u
+}
+
+// SetNillableDatabaseSourceID sets the "database_source" edge to the DatabaseSource entity by ID if the given value is not nil.
+func (_u *SourceUpdateOne) SetNillableDatabaseSourceID(id *uuid.UUID) *SourceUpdateOne {
+	if id != nil {
+		_u = _u.SetDatabaseSourceID(*id)
+	}
+	return _u
+}
+
+// SetDatabaseSource sets the "database_source" edge to the DatabaseSource entity.
+func (_u *SourceUpdateOne) SetDatabaseSource(v *DatabaseSource) *SourceUpdateOne {
+	return _u.SetDatabaseSourceID(v.ID)
+}
+
 // Mutation returns the SourceMutation object of the builder.
 func (_u *SourceUpdateOne) Mutation() *SourceMutation {
 	return _u.mutation
@@ -742,6 +851,12 @@ func (_u *SourceUpdateOne) RemoveJobs(v ...*IngestionJob) *SourceUpdateOne {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveJobIDs(ids...)
+}
+
+// ClearDatabaseSource clears the "database_source" edge to the DatabaseSource entity.
+func (_u *SourceUpdateOne) ClearDatabaseSource() *SourceUpdateOne {
+	_u.mutation.ClearDatabaseSource()
+	return _u
 }
 
 // Where appends a list predicates to the SourceUpdate builder.
@@ -800,16 +915,6 @@ func (_u *SourceUpdateOne) check() error {
 			return &ValidationError{Name: "name", err: fmt.Errorf(`ent: validator failed for field "Source.name": %w`, err)}
 		}
 	}
-	if v, ok := _u.mutation.RepoOwner(); ok {
-		if err := source.RepoOwnerValidator(v); err != nil {
-			return &ValidationError{Name: "repo_owner", err: fmt.Errorf(`ent: validator failed for field "Source.repo_owner": %w`, err)}
-		}
-	}
-	if v, ok := _u.mutation.RepoName(); ok {
-		if err := source.RepoNameValidator(v); err != nil {
-			return &ValidationError{Name: "repo_name", err: fmt.Errorf(`ent: validator failed for field "Source.repo_name": %w`, err)}
-		}
-	}
 	if v, ok := _u.mutation.SyncStatus(); ok {
 		if err := source.SyncStatusValidator(v); err != nil {
 			return &ValidationError{Name: "sync_status", err: fmt.Errorf(`ent: validator failed for field "Source.sync_status": %w`, err)}
@@ -859,11 +964,20 @@ func (_u *SourceUpdateOne) sqlSave(ctx context.Context) (_node *Source, err erro
 	if value, ok := _u.mutation.RepoOwner(); ok {
 		_spec.SetField(source.FieldRepoOwner, field.TypeString, value)
 	}
+	if _u.mutation.RepoOwnerCleared() {
+		_spec.ClearField(source.FieldRepoOwner, field.TypeString)
+	}
 	if value, ok := _u.mutation.RepoName(); ok {
 		_spec.SetField(source.FieldRepoName, field.TypeString, value)
 	}
+	if _u.mutation.RepoNameCleared() {
+		_spec.ClearField(source.FieldRepoName, field.TypeString)
+	}
 	if value, ok := _u.mutation.Branch(); ok {
 		_spec.SetField(source.FieldBranch, field.TypeString, value)
+	}
+	if _u.mutation.BranchCleared() {
+		_spec.ClearField(source.FieldBranch, field.TypeString)
 	}
 	if value, ok := _u.mutation.LastCommitHash(); ok {
 		_spec.SetField(source.FieldLastCommitHash, field.TypeString, value)
@@ -995,6 +1109,35 @@ func (_u *SourceUpdateOne) sqlSave(ctx context.Context) (_node *Source, err erro
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(ingestionjob.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.DatabaseSourceCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   source.DatabaseSourceTable,
+			Columns: []string{source.DatabaseSourceColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(databasesource.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.DatabaseSourceIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   source.DatabaseSourceTable,
+			Columns: []string{source.DatabaseSourceColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(databasesource.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

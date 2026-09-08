@@ -111,7 +111,7 @@ func Decrypt(ciphertextBase64 string, key []byte) ([]byte, error) {
 		return nil, ErrInvalidKeySize
 	}
 
-	data, err := base64.StdEncoding.DecodeString(ciphertextBase64)
+	data, err := base64.StdEncoding.Strict().DecodeString(ciphertextBase64)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrInvalidBase64, err)
 	}

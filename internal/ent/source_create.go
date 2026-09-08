@@ -11,6 +11,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
+	"github.com/your-org/contextforge/internal/ent/databasesource"
 	"github.com/your-org/contextforge/internal/ent/document"
 	"github.com/your-org/contextforge/internal/ent/ingestionjob"
 	"github.com/your-org/contextforge/internal/ent/project"
@@ -56,9 +57,25 @@ func (_c *SourceCreate) SetRepoOwner(v string) *SourceCreate {
 	return _c
 }
 
+// SetNillableRepoOwner sets the "repo_owner" field if the given value is not nil.
+func (_c *SourceCreate) SetNillableRepoOwner(v *string) *SourceCreate {
+	if v != nil {
+		_c.SetRepoOwner(*v)
+	}
+	return _c
+}
+
 // SetRepoName sets the "repo_name" field.
 func (_c *SourceCreate) SetRepoName(v string) *SourceCreate {
 	_c.mutation.SetRepoName(v)
+	return _c
+}
+
+// SetNillableRepoName sets the "repo_name" field if the given value is not nil.
+func (_c *SourceCreate) SetNillableRepoName(v *string) *SourceCreate {
+	if v != nil {
+		_c.SetRepoName(*v)
+	}
 	return _c
 }
 
@@ -195,6 +212,25 @@ func (_c *SourceCreate) AddJobs(v ...*IngestionJob) *SourceCreate {
 	return _c.AddJobIDs(ids...)
 }
 
+// SetDatabaseSourceID sets the "database_source" edge to the DatabaseSource entity by ID.
+func (_c *SourceCreate) SetDatabaseSourceID(id uuid.UUID) *SourceCreate {
+	_c.mutation.SetDatabaseSourceID(id)
+	return _c
+}
+
+// SetNillableDatabaseSourceID sets the "database_source" edge to the DatabaseSource entity by ID if the given value is not nil.
+func (_c *SourceCreate) SetNillableDatabaseSourceID(id *uuid.UUID) *SourceCreate {
+	if id != nil {
+		_c = _c.SetDatabaseSourceID(*id)
+	}
+	return _c
+}
+
+// SetDatabaseSource sets the "database_source" edge to the DatabaseSource entity.
+func (_c *SourceCreate) SetDatabaseSource(v *DatabaseSource) *SourceCreate {
+	return _c.SetDatabaseSourceID(v.ID)
+}
+
 // Mutation returns the SourceMutation object of the builder.
 func (_c *SourceCreate) Mutation() *SourceMutation {
 	return _c.mutation
@@ -233,6 +269,14 @@ func (_c *SourceCreate) defaults() {
 	if _, ok := _c.mutation.GetType(); !ok {
 		v := source.DefaultType
 		_c.mutation.SetType(v)
+	}
+	if _, ok := _c.mutation.RepoOwner(); !ok {
+		v := source.DefaultRepoOwner
+		_c.mutation.SetRepoOwner(v)
+	}
+	if _, ok := _c.mutation.RepoName(); !ok {
+		v := source.DefaultRepoName
+		_c.mutation.SetRepoName(v)
 	}
 	if _, ok := _c.mutation.Branch(); !ok {
 		v := source.DefaultBranch
@@ -275,25 +319,6 @@ func (_c *SourceCreate) check() error {
 	}
 	if _, ok := _c.mutation.GetType(); !ok {
 		return &ValidationError{Name: "type", err: errors.New(`ent: missing required field "Source.type"`)}
-	}
-	if _, ok := _c.mutation.RepoOwner(); !ok {
-		return &ValidationError{Name: "repo_owner", err: errors.New(`ent: missing required field "Source.repo_owner"`)}
-	}
-	if v, ok := _c.mutation.RepoOwner(); ok {
-		if err := source.RepoOwnerValidator(v); err != nil {
-			return &ValidationError{Name: "repo_owner", err: fmt.Errorf(`ent: validator failed for field "Source.repo_owner": %w`, err)}
-		}
-	}
-	if _, ok := _c.mutation.RepoName(); !ok {
-		return &ValidationError{Name: "repo_name", err: errors.New(`ent: missing required field "Source.repo_name"`)}
-	}
-	if v, ok := _c.mutation.RepoName(); ok {
-		if err := source.RepoNameValidator(v); err != nil {
-			return &ValidationError{Name: "repo_name", err: fmt.Errorf(`ent: validator failed for field "Source.repo_name": %w`, err)}
-		}
-	}
-	if _, ok := _c.mutation.Branch(); !ok {
-		return &ValidationError{Name: "branch", err: errors.New(`ent: missing required field "Source.branch"`)}
 	}
 	if _, ok := _c.mutation.SyncStatus(); !ok {
 		return &ValidationError{Name: "sync_status", err: errors.New(`ent: missing required field "Source.sync_status"`)}
@@ -429,6 +454,22 @@ func (_c *SourceCreate) createSpec() (*Source, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(ingestionjob.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.DatabaseSourceIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   source.DatabaseSourceTable,
+			Columns: []string{source.DatabaseSourceColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(databasesource.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

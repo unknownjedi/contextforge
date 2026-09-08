@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
+	"github.com/your-org/contextforge/internal/ent/databasesource"
 	"github.com/your-org/contextforge/internal/ent/document"
 	"github.com/your-org/contextforge/internal/ent/ingestionjob"
 	"github.com/your-org/contextforge/internal/ent/predicate"
@@ -23,13 +24,14 @@ import (
 // SourceQuery is the builder for querying Source entities.
 type SourceQuery struct {
 	config
-	ctx           *QueryContext
-	order         []source.OrderOption
-	inters        []Interceptor
-	predicates    []predicate.Source
-	withProject   *ProjectQuery
-	withDocuments *DocumentQuery
-	withJobs      *IngestionJobQuery
+	ctx                *QueryContext
+	order              []source.OrderOption
+	inters             []Interceptor
+	predicates         []predicate.Source
+	withProject        *ProjectQuery
+	withDocuments      *DocumentQuery
+	withJobs           *IngestionJobQuery
+	withDatabaseSource *DatabaseSourceQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -125,6 +127,28 @@ func (_q *SourceQuery) QueryJobs() *IngestionJobQuery {
 			sqlgraph.From(source.Table, source.FieldID, selector),
 			sqlgraph.To(ingestionjob.Table, ingestionjob.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, source.JobsTable, source.JobsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryDatabaseSource chains the current query on the "database_source" edge.
+func (_q *SourceQuery) QueryDatabaseSource() *DatabaseSourceQuery {
+	query := (&DatabaseSourceClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(source.Table, source.FieldID, selector),
+			sqlgraph.To(databasesource.Table, databasesource.FieldID),
+			sqlgraph.Edge(sqlgraph.O2O, false, source.DatabaseSourceTable, source.DatabaseSourceColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -319,14 +343,15 @@ func (_q *SourceQuery) Clone() *SourceQuery {
 		return nil
 	}
 	return &SourceQuery{
-		config:        _q.config,
-		ctx:           _q.ctx.Clone(),
-		order:         append([]source.OrderOption{}, _q.order...),
-		inters:        append([]Interceptor{}, _q.inters...),
-		predicates:    append([]predicate.Source{}, _q.predicates...),
-		withProject:   _q.withProject.Clone(),
-		withDocuments: _q.withDocuments.Clone(),
-		withJobs:      _q.withJobs.Clone(),
+		config:             _q.config,
+		ctx:                _q.ctx.Clone(),
+		order:              append([]source.OrderOption{}, _q.order...),
+		inters:             append([]Interceptor{}, _q.inters...),
+		predicates:         append([]predicate.Source{}, _q.predicates...),
+		withProject:        _q.withProject.Clone(),
+		withDocuments:      _q.withDocuments.Clone(),
+		withJobs:           _q.withJobs.Clone(),
+		withDatabaseSource: _q.withDatabaseSource.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -363,6 +388,17 @@ func (_q *SourceQuery) WithJobs(opts ...func(*IngestionJobQuery)) *SourceQuery {
 		opt(query)
 	}
 	_q.withJobs = query
+	return _q
+}
+
+// WithDatabaseSource tells the query-builder to eager-load the nodes that are connected to
+// the "database_source" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *SourceQuery) WithDatabaseSource(opts ...func(*DatabaseSourceQuery)) *SourceQuery {
+	query := (&DatabaseSourceClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withDatabaseSource = query
 	return _q
 }
 
@@ -444,10 +480,11 @@ func (_q *SourceQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Sourc
 	var (
 		nodes       = []*Source{}
 		_spec       = _q.querySpec()
-		loadedTypes = [3]bool{
+		loadedTypes = [4]bool{
 			_q.withProject != nil,
 			_q.withDocuments != nil,
 			_q.withJobs != nil,
+			_q.withDatabaseSource != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -485,6 +522,12 @@ func (_q *SourceQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Sourc
 		if err := _q.loadJobs(ctx, query, nodes,
 			func(n *Source) { n.Edges.Jobs = []*IngestionJob{} },
 			func(n *Source, e *IngestionJob) { n.Edges.Jobs = append(n.Edges.Jobs, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withDatabaseSource; query != nil {
+		if err := _q.loadDatabaseSource(ctx, query, nodes, nil,
+			func(n *Source, e *DatabaseSource) { n.Edges.DatabaseSource = e }); err != nil {
 			return nil, err
 		}
 	}
@@ -565,6 +608,33 @@ func (_q *SourceQuery) loadJobs(ctx context.Context, query *IngestionJobQuery, n
 	}
 	query.Where(predicate.IngestionJob(func(s *sql.Selector) {
 		s.Where(sql.InValues(s.C(source.JobsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.SourceID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "source_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *SourceQuery) loadDatabaseSource(ctx context.Context, query *DatabaseSourceQuery, nodes []*Source, init func(*Source), assign func(*Source, *DatabaseSource)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[uuid.UUID]*Source)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(databasesource.FieldSourceID)
+	}
+	query.Where(predicate.DatabaseSource(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(source.DatabaseSourceColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {

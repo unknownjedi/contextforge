@@ -15,6 +15,8 @@ import (
 	"github.com/your-org/contextforge/internal/api"
 	"github.com/your-org/contextforge/internal/api/handler"
 	"github.com/your-org/contextforge/internal/config"
+	"github.com/your-org/contextforge/internal/connector"
+	"github.com/your-org/contextforge/internal/crypto"
 	"github.com/your-org/contextforge/internal/database"
 	"github.com/your-org/contextforge/internal/logger"
 	"github.com/your-org/contextforge/internal/provider"
@@ -119,16 +121,33 @@ func main() {
 	chatH := handler.NewChatHandler(ragService, log)
 	webhookH := handler.NewWebhookHandler(cfg.Auth.WebhookSecret, log)
 
+	encKey, err := crypto.KeyFromHex(cfg.Auth.TokenEncryptionKey)
+	if err != nil {
+		log.Fatal("invalid token encryption key", zap.Error(err))
+	}
+	allowPrivateIPs := cfg.Server.Env == "development"
+	dbSourceService := service.NewDatabaseSourceService(
+		db.EntClient,
+		connector.DefaultRegistry(),
+		encKey,
+		queueClient,
+		jobRepo,
+		allowPrivateIPs,
+		log,
+	)
+	dbSourceH := handler.NewDatabaseSourceHandler(dbSourceService, log)
+
 	// 8. Initialize server router & dependency checkers
 	server := api.NewServer(cfg, log, db, nil)
 	server.MountRoutes(api.Handlers{
-		Auth:     authH,
-		Project:  projectH,
-		Source:   sourceH,
-		Document: docH,
-		Job:      jobH,
-		Chat:     chatH,
-		Webhook:  webhookH,
+		Auth:           authH,
+		Project:        projectH,
+		Source:         sourceH,
+		Document:       docH,
+		Job:            jobH,
+		Chat:           chatH,
+		Webhook:        webhookH,
+		DatabaseSource: dbSourceH,
 	}, projectRepo)
 
 	httpServer := server.HTTPServer()

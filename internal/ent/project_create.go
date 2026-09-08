@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
 	"github.com/your-org/contextforge/internal/ent/auditlog"
+	"github.com/your-org/contextforge/internal/ent/databasesource"
 	"github.com/your-org/contextforge/internal/ent/document"
 	"github.com/your-org/contextforge/internal/ent/documentchunk"
 	"github.com/your-org/contextforge/internal/ent/ingestionjob"
@@ -189,6 +190,21 @@ func (_c *ProjectCreate) AddSources(v ...*Source) *ProjectCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddSourceIDs(ids...)
+}
+
+// AddDatabaseSourceIDs adds the "database_sources" edge to the DatabaseSource entity by IDs.
+func (_c *ProjectCreate) AddDatabaseSourceIDs(ids ...uuid.UUID) *ProjectCreate {
+	_c.mutation.AddDatabaseSourceIDs(ids...)
+	return _c
+}
+
+// AddDatabaseSources adds the "database_sources" edges to the DatabaseSource entity.
+func (_c *ProjectCreate) AddDatabaseSources(v ...*DatabaseSource) *ProjectCreate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddDatabaseSourceIDs(ids...)
 }
 
 // AddDocumentIDs adds the "documents" edge to the Document entity by IDs.
@@ -460,6 +476,22 @@ func (_c *ProjectCreate) createSpec() (*Project, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(source.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.DatabaseSourcesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.DatabaseSourcesTable,
+			Columns: []string{project.DatabaseSourcesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(databasesource.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

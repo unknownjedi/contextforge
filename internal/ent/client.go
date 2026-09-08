@@ -17,6 +17,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/your-org/contextforge/internal/ent/auditlog"
+	"github.com/your-org/contextforge/internal/ent/databasesource"
 	"github.com/your-org/contextforge/internal/ent/document"
 	"github.com/your-org/contextforge/internal/ent/documentchunk"
 	"github.com/your-org/contextforge/internal/ent/ingestionjob"
@@ -32,6 +33,8 @@ type Client struct {
 	Schema *migrate.Schema
 	// AuditLog is the client for interacting with the AuditLog builders.
 	AuditLog *AuditLogClient
+	// DatabaseSource is the client for interacting with the DatabaseSource builders.
+	DatabaseSource *DatabaseSourceClient
 	// Document is the client for interacting with the Document builders.
 	Document *DocumentClient
 	// DocumentChunk is the client for interacting with the DocumentChunk builders.
@@ -56,6 +59,7 @@ func NewClient(opts ...Option) *Client {
 func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
 	c.AuditLog = NewAuditLogClient(c.config)
+	c.DatabaseSource = NewDatabaseSourceClient(c.config)
 	c.Document = NewDocumentClient(c.config)
 	c.DocumentChunk = NewDocumentChunkClient(c.config)
 	c.IngestionJob = NewIngestionJobClient(c.config)
@@ -152,15 +156,16 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	cfg := c.config
 	cfg.driver = tx
 	return &Tx{
-		ctx:           ctx,
-		config:        cfg,
-		AuditLog:      NewAuditLogClient(cfg),
-		Document:      NewDocumentClient(cfg),
-		DocumentChunk: NewDocumentChunkClient(cfg),
-		IngestionJob:  NewIngestionJobClient(cfg),
-		Project:       NewProjectClient(cfg),
-		Source:        NewSourceClient(cfg),
-		User:          NewUserClient(cfg),
+		ctx:            ctx,
+		config:         cfg,
+		AuditLog:       NewAuditLogClient(cfg),
+		DatabaseSource: NewDatabaseSourceClient(cfg),
+		Document:       NewDocumentClient(cfg),
+		DocumentChunk:  NewDocumentChunkClient(cfg),
+		IngestionJob:   NewIngestionJobClient(cfg),
+		Project:        NewProjectClient(cfg),
+		Source:         NewSourceClient(cfg),
+		User:           NewUserClient(cfg),
 	}, nil
 }
 
@@ -178,15 +183,16 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	cfg := c.config
 	cfg.driver = &txDriver{tx: tx, drv: c.driver}
 	return &Tx{
-		ctx:           ctx,
-		config:        cfg,
-		AuditLog:      NewAuditLogClient(cfg),
-		Document:      NewDocumentClient(cfg),
-		DocumentChunk: NewDocumentChunkClient(cfg),
-		IngestionJob:  NewIngestionJobClient(cfg),
-		Project:       NewProjectClient(cfg),
-		Source:        NewSourceClient(cfg),
-		User:          NewUserClient(cfg),
+		ctx:            ctx,
+		config:         cfg,
+		AuditLog:       NewAuditLogClient(cfg),
+		DatabaseSource: NewDatabaseSourceClient(cfg),
+		Document:       NewDocumentClient(cfg),
+		DocumentChunk:  NewDocumentChunkClient(cfg),
+		IngestionJob:   NewIngestionJobClient(cfg),
+		Project:        NewProjectClient(cfg),
+		Source:         NewSourceClient(cfg),
+		User:           NewUserClient(cfg),
 	}, nil
 }
 
@@ -216,8 +222,8 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
-		c.AuditLog, c.Document, c.DocumentChunk, c.IngestionJob, c.Project, c.Source,
-		c.User,
+		c.AuditLog, c.DatabaseSource, c.Document, c.DocumentChunk, c.IngestionJob,
+		c.Project, c.Source, c.User,
 	} {
 		n.Use(hooks...)
 	}
@@ -227,8 +233,8 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
-		c.AuditLog, c.Document, c.DocumentChunk, c.IngestionJob, c.Project, c.Source,
-		c.User,
+		c.AuditLog, c.DatabaseSource, c.Document, c.DocumentChunk, c.IngestionJob,
+		c.Project, c.Source, c.User,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -239,6 +245,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 	switch m := m.(type) {
 	case *AuditLogMutation:
 		return c.AuditLog.mutate(ctx, m)
+	case *DatabaseSourceMutation:
+		return c.DatabaseSource.mutate(ctx, m)
 	case *DocumentMutation:
 		return c.Document.mutate(ctx, m)
 	case *DocumentChunkMutation:
@@ -402,6 +410,171 @@ func (c *AuditLogClient) mutate(ctx context.Context, m *AuditLogMutation) (Value
 		return (&AuditLogDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown AuditLog mutation op: %q", m.Op())
+	}
+}
+
+// DatabaseSourceClient is a client for the DatabaseSource schema.
+type DatabaseSourceClient struct {
+	config
+}
+
+// NewDatabaseSourceClient returns a client for the DatabaseSource from the given config.
+func NewDatabaseSourceClient(c config) *DatabaseSourceClient {
+	return &DatabaseSourceClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `databasesource.Hooks(f(g(h())))`.
+func (c *DatabaseSourceClient) Use(hooks ...Hook) {
+	c.hooks.DatabaseSource = append(c.hooks.DatabaseSource, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `databasesource.Intercept(f(g(h())))`.
+func (c *DatabaseSourceClient) Intercept(interceptors ...Interceptor) {
+	c.inters.DatabaseSource = append(c.inters.DatabaseSource, interceptors...)
+}
+
+// Create returns a builder for creating a DatabaseSource entity.
+func (c *DatabaseSourceClient) Create() *DatabaseSourceCreate {
+	mutation := newDatabaseSourceMutation(c.config, OpCreate)
+	return &DatabaseSourceCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of DatabaseSource entities.
+func (c *DatabaseSourceClient) CreateBulk(builders ...*DatabaseSourceCreate) *DatabaseSourceCreateBulk {
+	return &DatabaseSourceCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *DatabaseSourceClient) MapCreateBulk(slice any, setFunc func(*DatabaseSourceCreate, int)) *DatabaseSourceCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &DatabaseSourceCreateBulk{err: fmt.Errorf("calling to DatabaseSourceClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*DatabaseSourceCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &DatabaseSourceCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for DatabaseSource.
+func (c *DatabaseSourceClient) Update() *DatabaseSourceUpdate {
+	mutation := newDatabaseSourceMutation(c.config, OpUpdate)
+	return &DatabaseSourceUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *DatabaseSourceClient) UpdateOne(_m *DatabaseSource) *DatabaseSourceUpdateOne {
+	mutation := newDatabaseSourceMutation(c.config, OpUpdateOne, withDatabaseSource(_m))
+	return &DatabaseSourceUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *DatabaseSourceClient) UpdateOneID(id uuid.UUID) *DatabaseSourceUpdateOne {
+	mutation := newDatabaseSourceMutation(c.config, OpUpdateOne, withDatabaseSourceID(id))
+	return &DatabaseSourceUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for DatabaseSource.
+func (c *DatabaseSourceClient) Delete() *DatabaseSourceDelete {
+	mutation := newDatabaseSourceMutation(c.config, OpDelete)
+	return &DatabaseSourceDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *DatabaseSourceClient) DeleteOne(_m *DatabaseSource) *DatabaseSourceDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *DatabaseSourceClient) DeleteOneID(id uuid.UUID) *DatabaseSourceDeleteOne {
+	builder := c.Delete().Where(databasesource.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &DatabaseSourceDeleteOne{builder}
+}
+
+// Query returns a query builder for DatabaseSource.
+func (c *DatabaseSourceClient) Query() *DatabaseSourceQuery {
+	return &DatabaseSourceQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeDatabaseSource},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a DatabaseSource entity by its id.
+func (c *DatabaseSourceClient) Get(ctx context.Context, id uuid.UUID) (*DatabaseSource, error) {
+	return c.Query().Where(databasesource.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *DatabaseSourceClient) GetX(ctx context.Context, id uuid.UUID) *DatabaseSource {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QuerySource queries the source edge of a DatabaseSource.
+func (c *DatabaseSourceClient) QuerySource(_m *DatabaseSource) *SourceQuery {
+	query := (&SourceClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(databasesource.Table, databasesource.FieldID, id),
+			sqlgraph.To(source.Table, source.FieldID),
+			sqlgraph.Edge(sqlgraph.O2O, true, databasesource.SourceTable, databasesource.SourceColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryProject queries the project edge of a DatabaseSource.
+func (c *DatabaseSourceClient) QueryProject(_m *DatabaseSource) *ProjectQuery {
+	query := (&ProjectClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(databasesource.Table, databasesource.FieldID, id),
+			sqlgraph.To(project.Table, project.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, databasesource.ProjectTable, databasesource.ProjectColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *DatabaseSourceClient) Hooks() []Hook {
+	return c.hooks.DatabaseSource
+}
+
+// Interceptors returns the client interceptors.
+func (c *DatabaseSourceClient) Interceptors() []Interceptor {
+	return c.inters.DatabaseSource
+}
+
+func (c *DatabaseSourceClient) mutate(ctx context.Context, m *DatabaseSourceMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&DatabaseSourceCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&DatabaseSourceUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&DatabaseSourceUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&DatabaseSourceDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown DatabaseSource mutation op: %q", m.Op())
 	}
 }
 
@@ -1056,6 +1229,22 @@ func (c *ProjectClient) QuerySources(_m *Project) *SourceQuery {
 	return query
 }
 
+// QueryDatabaseSources queries the database_sources edge of a Project.
+func (c *ProjectClient) QueryDatabaseSources(_m *Project) *DatabaseSourceQuery {
+	query := (&DatabaseSourceClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(project.Table, project.FieldID, id),
+			sqlgraph.To(databasesource.Table, databasesource.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, project.DatabaseSourcesTable, project.DatabaseSourcesColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // QueryDocuments queries the documents edge of a Project.
 func (c *ProjectClient) QueryDocuments(_m *Project) *DocumentQuery {
 	query := (&DocumentClient{config: c.config}).Query()
@@ -1301,6 +1490,22 @@ func (c *SourceClient) QueryJobs(_m *Source) *IngestionJobQuery {
 	return query
 }
 
+// QueryDatabaseSource queries the database_source edge of a Source.
+func (c *SourceClient) QueryDatabaseSource(_m *Source) *DatabaseSourceQuery {
+	query := (&DatabaseSourceClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(source.Table, source.FieldID, id),
+			sqlgraph.To(databasesource.Table, databasesource.FieldID),
+			sqlgraph.Edge(sqlgraph.O2O, false, source.DatabaseSourceTable, source.DatabaseSourceColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *SourceClient) Hooks() []Hook {
 	return c.hooks.Source
@@ -1478,11 +1683,11 @@ func (c *UserClient) mutate(ctx context.Context, m *UserMutation) (Value, error)
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		AuditLog, Document, DocumentChunk, IngestionJob, Project, Source,
-		User []ent.Hook
+		AuditLog, DatabaseSource, Document, DocumentChunk, IngestionJob, Project,
+		Source, User []ent.Hook
 	}
 	inters struct {
-		AuditLog, Document, DocumentChunk, IngestionJob, Project, Source,
-		User []ent.Interceptor
+		AuditLog, DatabaseSource, Document, DocumentChunk, IngestionJob, Project,
+		Source, User []ent.Interceptor
 	}
 )

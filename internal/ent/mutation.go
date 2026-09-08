@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"github.com/google/uuid"
 	"github.com/your-org/contextforge/internal/ent/auditlog"
+	"github.com/your-org/contextforge/internal/ent/databasesource"
 	"github.com/your-org/contextforge/internal/ent/document"
 	"github.com/your-org/contextforge/internal/ent/documentchunk"
 	"github.com/your-org/contextforge/internal/ent/ingestionjob"
@@ -31,13 +32,14 @@ const (
 	OpUpdateOne = ent.OpUpdateOne
 
 	// Node types.
-	TypeAuditLog      = "AuditLog"
-	TypeDocument      = "Document"
-	TypeDocumentChunk = "DocumentChunk"
-	TypeIngestionJob  = "IngestionJob"
-	TypeProject       = "Project"
-	TypeSource        = "Source"
-	TypeUser          = "User"
+	TypeAuditLog       = "AuditLog"
+	TypeDatabaseSource = "DatabaseSource"
+	TypeDocument       = "Document"
+	TypeDocumentChunk  = "DocumentChunk"
+	TypeIngestionJob   = "IngestionJob"
+	TypeProject        = "Project"
+	TypeSource         = "Source"
+	TypeUser           = "User"
 )
 
 // AuditLogMutation represents an operation that mutates the AuditLog nodes in the graph.
@@ -843,6 +845,1236 @@ func (m *AuditLogMutation) ResetEdge(name string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown AuditLog edge %s", name)
+}
+
+// DatabaseSourceMutation represents an operation that mutates the DatabaseSource nodes in the graph.
+type DatabaseSourceMutation struct {
+	config
+	op                       Op
+	typ                      string
+	id                       *uuid.UUID
+	database_type            *string
+	host                     *string
+	port                     *int
+	addport                  *int
+	database_name            *string
+	username                 *string
+	encrypted_connection_url *string
+	configuration            *map[string]interface{}
+	status                   *string
+	last_error               *string
+	last_synced_at           *time.Time
+	created_at               *time.Time
+	updated_at               *time.Time
+	clearedFields            map[string]struct{}
+	source                   *uuid.UUID
+	clearedsource            bool
+	project                  *uuid.UUID
+	clearedproject           bool
+	done                     bool
+	oldValue                 func(context.Context) (*DatabaseSource, error)
+	predicates               []predicate.DatabaseSource
+}
+
+var _ ent.Mutation = (*DatabaseSourceMutation)(nil)
+
+// databasesourceOption allows management of the mutation configuration using functional options.
+type databasesourceOption func(*DatabaseSourceMutation)
+
+// newDatabaseSourceMutation creates new mutation for the DatabaseSource entity.
+func newDatabaseSourceMutation(c config, op Op, opts ...databasesourceOption) *DatabaseSourceMutation {
+	m := &DatabaseSourceMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeDatabaseSource,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withDatabaseSourceID sets the ID field of the mutation.
+func withDatabaseSourceID(id uuid.UUID) databasesourceOption {
+	return func(m *DatabaseSourceMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *DatabaseSource
+		)
+		m.oldValue = func(ctx context.Context) (*DatabaseSource, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().DatabaseSource.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withDatabaseSource sets the old DatabaseSource of the mutation.
+func withDatabaseSource(node *DatabaseSource) databasesourceOption {
+	return func(m *DatabaseSourceMutation) {
+		m.oldValue = func(context.Context) (*DatabaseSource, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m DatabaseSourceMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m DatabaseSourceMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of DatabaseSource entities.
+func (m *DatabaseSourceMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *DatabaseSourceMutation) ID() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *DatabaseSourceMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().DatabaseSource.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetSourceID sets the "source_id" field.
+func (m *DatabaseSourceMutation) SetSourceID(u uuid.UUID) {
+	m.source = &u
+}
+
+// SourceID returns the value of the "source_id" field in the mutation.
+func (m *DatabaseSourceMutation) SourceID() (r uuid.UUID, exists bool) {
+	v := m.source
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSourceID returns the old "source_id" field's value of the DatabaseSource entity.
+// If the DatabaseSource object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DatabaseSourceMutation) OldSourceID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSourceID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSourceID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSourceID: %w", err)
+	}
+	return oldValue.SourceID, nil
+}
+
+// ResetSourceID resets all changes to the "source_id" field.
+func (m *DatabaseSourceMutation) ResetSourceID() {
+	m.source = nil
+}
+
+// SetProjectID sets the "project_id" field.
+func (m *DatabaseSourceMutation) SetProjectID(u uuid.UUID) {
+	m.project = &u
+}
+
+// ProjectID returns the value of the "project_id" field in the mutation.
+func (m *DatabaseSourceMutation) ProjectID() (r uuid.UUID, exists bool) {
+	v := m.project
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldProjectID returns the old "project_id" field's value of the DatabaseSource entity.
+// If the DatabaseSource object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DatabaseSourceMutation) OldProjectID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldProjectID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldProjectID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldProjectID: %w", err)
+	}
+	return oldValue.ProjectID, nil
+}
+
+// ResetProjectID resets all changes to the "project_id" field.
+func (m *DatabaseSourceMutation) ResetProjectID() {
+	m.project = nil
+}
+
+// SetDatabaseType sets the "database_type" field.
+func (m *DatabaseSourceMutation) SetDatabaseType(s string) {
+	m.database_type = &s
+}
+
+// DatabaseType returns the value of the "database_type" field in the mutation.
+func (m *DatabaseSourceMutation) DatabaseType() (r string, exists bool) {
+	v := m.database_type
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDatabaseType returns the old "database_type" field's value of the DatabaseSource entity.
+// If the DatabaseSource object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DatabaseSourceMutation) OldDatabaseType(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDatabaseType is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDatabaseType requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDatabaseType: %w", err)
+	}
+	return oldValue.DatabaseType, nil
+}
+
+// ResetDatabaseType resets all changes to the "database_type" field.
+func (m *DatabaseSourceMutation) ResetDatabaseType() {
+	m.database_type = nil
+}
+
+// SetHost sets the "host" field.
+func (m *DatabaseSourceMutation) SetHost(s string) {
+	m.host = &s
+}
+
+// Host returns the value of the "host" field in the mutation.
+func (m *DatabaseSourceMutation) Host() (r string, exists bool) {
+	v := m.host
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldHost returns the old "host" field's value of the DatabaseSource entity.
+// If the DatabaseSource object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DatabaseSourceMutation) OldHost(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldHost is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldHost requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldHost: %w", err)
+	}
+	return oldValue.Host, nil
+}
+
+// ResetHost resets all changes to the "host" field.
+func (m *DatabaseSourceMutation) ResetHost() {
+	m.host = nil
+}
+
+// SetPort sets the "port" field.
+func (m *DatabaseSourceMutation) SetPort(i int) {
+	m.port = &i
+	m.addport = nil
+}
+
+// Port returns the value of the "port" field in the mutation.
+func (m *DatabaseSourceMutation) Port() (r int, exists bool) {
+	v := m.port
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPort returns the old "port" field's value of the DatabaseSource entity.
+// If the DatabaseSource object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DatabaseSourceMutation) OldPort(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPort is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPort requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPort: %w", err)
+	}
+	return oldValue.Port, nil
+}
+
+// AddPort adds i to the "port" field.
+func (m *DatabaseSourceMutation) AddPort(i int) {
+	if m.addport != nil {
+		*m.addport += i
+	} else {
+		m.addport = &i
+	}
+}
+
+// AddedPort returns the value that was added to the "port" field in this mutation.
+func (m *DatabaseSourceMutation) AddedPort() (r int, exists bool) {
+	v := m.addport
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetPort resets all changes to the "port" field.
+func (m *DatabaseSourceMutation) ResetPort() {
+	m.port = nil
+	m.addport = nil
+}
+
+// SetDatabaseName sets the "database_name" field.
+func (m *DatabaseSourceMutation) SetDatabaseName(s string) {
+	m.database_name = &s
+}
+
+// DatabaseName returns the value of the "database_name" field in the mutation.
+func (m *DatabaseSourceMutation) DatabaseName() (r string, exists bool) {
+	v := m.database_name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDatabaseName returns the old "database_name" field's value of the DatabaseSource entity.
+// If the DatabaseSource object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DatabaseSourceMutation) OldDatabaseName(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDatabaseName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDatabaseName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDatabaseName: %w", err)
+	}
+	return oldValue.DatabaseName, nil
+}
+
+// ResetDatabaseName resets all changes to the "database_name" field.
+func (m *DatabaseSourceMutation) ResetDatabaseName() {
+	m.database_name = nil
+}
+
+// SetUsername sets the "username" field.
+func (m *DatabaseSourceMutation) SetUsername(s string) {
+	m.username = &s
+}
+
+// Username returns the value of the "username" field in the mutation.
+func (m *DatabaseSourceMutation) Username() (r string, exists bool) {
+	v := m.username
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUsername returns the old "username" field's value of the DatabaseSource entity.
+// If the DatabaseSource object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DatabaseSourceMutation) OldUsername(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUsername is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUsername requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUsername: %w", err)
+	}
+	return oldValue.Username, nil
+}
+
+// ResetUsername resets all changes to the "username" field.
+func (m *DatabaseSourceMutation) ResetUsername() {
+	m.username = nil
+}
+
+// SetEncryptedConnectionURL sets the "encrypted_connection_url" field.
+func (m *DatabaseSourceMutation) SetEncryptedConnectionURL(s string) {
+	m.encrypted_connection_url = &s
+}
+
+// EncryptedConnectionURL returns the value of the "encrypted_connection_url" field in the mutation.
+func (m *DatabaseSourceMutation) EncryptedConnectionURL() (r string, exists bool) {
+	v := m.encrypted_connection_url
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEncryptedConnectionURL returns the old "encrypted_connection_url" field's value of the DatabaseSource entity.
+// If the DatabaseSource object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DatabaseSourceMutation) OldEncryptedConnectionURL(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEncryptedConnectionURL is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEncryptedConnectionURL requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEncryptedConnectionURL: %w", err)
+	}
+	return oldValue.EncryptedConnectionURL, nil
+}
+
+// ResetEncryptedConnectionURL resets all changes to the "encrypted_connection_url" field.
+func (m *DatabaseSourceMutation) ResetEncryptedConnectionURL() {
+	m.encrypted_connection_url = nil
+}
+
+// SetConfiguration sets the "configuration" field.
+func (m *DatabaseSourceMutation) SetConfiguration(value map[string]interface{}) {
+	m.configuration = &value
+}
+
+// Configuration returns the value of the "configuration" field in the mutation.
+func (m *DatabaseSourceMutation) Configuration() (r map[string]interface{}, exists bool) {
+	v := m.configuration
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldConfiguration returns the old "configuration" field's value of the DatabaseSource entity.
+// If the DatabaseSource object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DatabaseSourceMutation) OldConfiguration(ctx context.Context) (v map[string]interface{}, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldConfiguration is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldConfiguration requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldConfiguration: %w", err)
+	}
+	return oldValue.Configuration, nil
+}
+
+// ClearConfiguration clears the value of the "configuration" field.
+func (m *DatabaseSourceMutation) ClearConfiguration() {
+	m.configuration = nil
+	m.clearedFields[databasesource.FieldConfiguration] = struct{}{}
+}
+
+// ConfigurationCleared returns if the "configuration" field was cleared in this mutation.
+func (m *DatabaseSourceMutation) ConfigurationCleared() bool {
+	_, ok := m.clearedFields[databasesource.FieldConfiguration]
+	return ok
+}
+
+// ResetConfiguration resets all changes to the "configuration" field.
+func (m *DatabaseSourceMutation) ResetConfiguration() {
+	m.configuration = nil
+	delete(m.clearedFields, databasesource.FieldConfiguration)
+}
+
+// SetStatus sets the "status" field.
+func (m *DatabaseSourceMutation) SetStatus(s string) {
+	m.status = &s
+}
+
+// Status returns the value of the "status" field in the mutation.
+func (m *DatabaseSourceMutation) Status() (r string, exists bool) {
+	v := m.status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStatus returns the old "status" field's value of the DatabaseSource entity.
+// If the DatabaseSource object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DatabaseSourceMutation) OldStatus(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStatus is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStatus requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStatus: %w", err)
+	}
+	return oldValue.Status, nil
+}
+
+// ResetStatus resets all changes to the "status" field.
+func (m *DatabaseSourceMutation) ResetStatus() {
+	m.status = nil
+}
+
+// SetLastError sets the "last_error" field.
+func (m *DatabaseSourceMutation) SetLastError(s string) {
+	m.last_error = &s
+}
+
+// LastError returns the value of the "last_error" field in the mutation.
+func (m *DatabaseSourceMutation) LastError() (r string, exists bool) {
+	v := m.last_error
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastError returns the old "last_error" field's value of the DatabaseSource entity.
+// If the DatabaseSource object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DatabaseSourceMutation) OldLastError(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastError is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastError requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastError: %w", err)
+	}
+	return oldValue.LastError, nil
+}
+
+// ClearLastError clears the value of the "last_error" field.
+func (m *DatabaseSourceMutation) ClearLastError() {
+	m.last_error = nil
+	m.clearedFields[databasesource.FieldLastError] = struct{}{}
+}
+
+// LastErrorCleared returns if the "last_error" field was cleared in this mutation.
+func (m *DatabaseSourceMutation) LastErrorCleared() bool {
+	_, ok := m.clearedFields[databasesource.FieldLastError]
+	return ok
+}
+
+// ResetLastError resets all changes to the "last_error" field.
+func (m *DatabaseSourceMutation) ResetLastError() {
+	m.last_error = nil
+	delete(m.clearedFields, databasesource.FieldLastError)
+}
+
+// SetLastSyncedAt sets the "last_synced_at" field.
+func (m *DatabaseSourceMutation) SetLastSyncedAt(t time.Time) {
+	m.last_synced_at = &t
+}
+
+// LastSyncedAt returns the value of the "last_synced_at" field in the mutation.
+func (m *DatabaseSourceMutation) LastSyncedAt() (r time.Time, exists bool) {
+	v := m.last_synced_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastSyncedAt returns the old "last_synced_at" field's value of the DatabaseSource entity.
+// If the DatabaseSource object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DatabaseSourceMutation) OldLastSyncedAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastSyncedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastSyncedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastSyncedAt: %w", err)
+	}
+	return oldValue.LastSyncedAt, nil
+}
+
+// ClearLastSyncedAt clears the value of the "last_synced_at" field.
+func (m *DatabaseSourceMutation) ClearLastSyncedAt() {
+	m.last_synced_at = nil
+	m.clearedFields[databasesource.FieldLastSyncedAt] = struct{}{}
+}
+
+// LastSyncedAtCleared returns if the "last_synced_at" field was cleared in this mutation.
+func (m *DatabaseSourceMutation) LastSyncedAtCleared() bool {
+	_, ok := m.clearedFields[databasesource.FieldLastSyncedAt]
+	return ok
+}
+
+// ResetLastSyncedAt resets all changes to the "last_synced_at" field.
+func (m *DatabaseSourceMutation) ResetLastSyncedAt() {
+	m.last_synced_at = nil
+	delete(m.clearedFields, databasesource.FieldLastSyncedAt)
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *DatabaseSourceMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *DatabaseSourceMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the DatabaseSource entity.
+// If the DatabaseSource object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DatabaseSourceMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *DatabaseSourceMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *DatabaseSourceMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *DatabaseSourceMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the DatabaseSource entity.
+// If the DatabaseSource object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DatabaseSourceMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *DatabaseSourceMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// ClearSource clears the "source" edge to the Source entity.
+func (m *DatabaseSourceMutation) ClearSource() {
+	m.clearedsource = true
+	m.clearedFields[databasesource.FieldSourceID] = struct{}{}
+}
+
+// SourceCleared reports if the "source" edge to the Source entity was cleared.
+func (m *DatabaseSourceMutation) SourceCleared() bool {
+	return m.clearedsource
+}
+
+// SourceIDs returns the "source" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// SourceID instead. It exists only for internal usage by the builders.
+func (m *DatabaseSourceMutation) SourceIDs() (ids []uuid.UUID) {
+	if id := m.source; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetSource resets all changes to the "source" edge.
+func (m *DatabaseSourceMutation) ResetSource() {
+	m.source = nil
+	m.clearedsource = false
+}
+
+// ClearProject clears the "project" edge to the Project entity.
+func (m *DatabaseSourceMutation) ClearProject() {
+	m.clearedproject = true
+	m.clearedFields[databasesource.FieldProjectID] = struct{}{}
+}
+
+// ProjectCleared reports if the "project" edge to the Project entity was cleared.
+func (m *DatabaseSourceMutation) ProjectCleared() bool {
+	return m.clearedproject
+}
+
+// ProjectIDs returns the "project" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ProjectID instead. It exists only for internal usage by the builders.
+func (m *DatabaseSourceMutation) ProjectIDs() (ids []uuid.UUID) {
+	if id := m.project; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetProject resets all changes to the "project" edge.
+func (m *DatabaseSourceMutation) ResetProject() {
+	m.project = nil
+	m.clearedproject = false
+}
+
+// Where appends a list predicates to the DatabaseSourceMutation builder.
+func (m *DatabaseSourceMutation) Where(ps ...predicate.DatabaseSource) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the DatabaseSourceMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *DatabaseSourceMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.DatabaseSource, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *DatabaseSourceMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *DatabaseSourceMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (DatabaseSource).
+func (m *DatabaseSourceMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *DatabaseSourceMutation) Fields() []string {
+	fields := make([]string, 0, 14)
+	if m.source != nil {
+		fields = append(fields, databasesource.FieldSourceID)
+	}
+	if m.project != nil {
+		fields = append(fields, databasesource.FieldProjectID)
+	}
+	if m.database_type != nil {
+		fields = append(fields, databasesource.FieldDatabaseType)
+	}
+	if m.host != nil {
+		fields = append(fields, databasesource.FieldHost)
+	}
+	if m.port != nil {
+		fields = append(fields, databasesource.FieldPort)
+	}
+	if m.database_name != nil {
+		fields = append(fields, databasesource.FieldDatabaseName)
+	}
+	if m.username != nil {
+		fields = append(fields, databasesource.FieldUsername)
+	}
+	if m.encrypted_connection_url != nil {
+		fields = append(fields, databasesource.FieldEncryptedConnectionURL)
+	}
+	if m.configuration != nil {
+		fields = append(fields, databasesource.FieldConfiguration)
+	}
+	if m.status != nil {
+		fields = append(fields, databasesource.FieldStatus)
+	}
+	if m.last_error != nil {
+		fields = append(fields, databasesource.FieldLastError)
+	}
+	if m.last_synced_at != nil {
+		fields = append(fields, databasesource.FieldLastSyncedAt)
+	}
+	if m.created_at != nil {
+		fields = append(fields, databasesource.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, databasesource.FieldUpdatedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *DatabaseSourceMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case databasesource.FieldSourceID:
+		return m.SourceID()
+	case databasesource.FieldProjectID:
+		return m.ProjectID()
+	case databasesource.FieldDatabaseType:
+		return m.DatabaseType()
+	case databasesource.FieldHost:
+		return m.Host()
+	case databasesource.FieldPort:
+		return m.Port()
+	case databasesource.FieldDatabaseName:
+		return m.DatabaseName()
+	case databasesource.FieldUsername:
+		return m.Username()
+	case databasesource.FieldEncryptedConnectionURL:
+		return m.EncryptedConnectionURL()
+	case databasesource.FieldConfiguration:
+		return m.Configuration()
+	case databasesource.FieldStatus:
+		return m.Status()
+	case databasesource.FieldLastError:
+		return m.LastError()
+	case databasesource.FieldLastSyncedAt:
+		return m.LastSyncedAt()
+	case databasesource.FieldCreatedAt:
+		return m.CreatedAt()
+	case databasesource.FieldUpdatedAt:
+		return m.UpdatedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *DatabaseSourceMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case databasesource.FieldSourceID:
+		return m.OldSourceID(ctx)
+	case databasesource.FieldProjectID:
+		return m.OldProjectID(ctx)
+	case databasesource.FieldDatabaseType:
+		return m.OldDatabaseType(ctx)
+	case databasesource.FieldHost:
+		return m.OldHost(ctx)
+	case databasesource.FieldPort:
+		return m.OldPort(ctx)
+	case databasesource.FieldDatabaseName:
+		return m.OldDatabaseName(ctx)
+	case databasesource.FieldUsername:
+		return m.OldUsername(ctx)
+	case databasesource.FieldEncryptedConnectionURL:
+		return m.OldEncryptedConnectionURL(ctx)
+	case databasesource.FieldConfiguration:
+		return m.OldConfiguration(ctx)
+	case databasesource.FieldStatus:
+		return m.OldStatus(ctx)
+	case databasesource.FieldLastError:
+		return m.OldLastError(ctx)
+	case databasesource.FieldLastSyncedAt:
+		return m.OldLastSyncedAt(ctx)
+	case databasesource.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case databasesource.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown DatabaseSource field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *DatabaseSourceMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case databasesource.FieldSourceID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSourceID(v)
+		return nil
+	case databasesource.FieldProjectID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetProjectID(v)
+		return nil
+	case databasesource.FieldDatabaseType:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDatabaseType(v)
+		return nil
+	case databasesource.FieldHost:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetHost(v)
+		return nil
+	case databasesource.FieldPort:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPort(v)
+		return nil
+	case databasesource.FieldDatabaseName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDatabaseName(v)
+		return nil
+	case databasesource.FieldUsername:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUsername(v)
+		return nil
+	case databasesource.FieldEncryptedConnectionURL:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEncryptedConnectionURL(v)
+		return nil
+	case databasesource.FieldConfiguration:
+		v, ok := value.(map[string]interface{})
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetConfiguration(v)
+		return nil
+	case databasesource.FieldStatus:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStatus(v)
+		return nil
+	case databasesource.FieldLastError:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastError(v)
+		return nil
+	case databasesource.FieldLastSyncedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastSyncedAt(v)
+		return nil
+	case databasesource.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case databasesource.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown DatabaseSource field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *DatabaseSourceMutation) AddedFields() []string {
+	var fields []string
+	if m.addport != nil {
+		fields = append(fields, databasesource.FieldPort)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *DatabaseSourceMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case databasesource.FieldPort:
+		return m.AddedPort()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *DatabaseSourceMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case databasesource.FieldPort:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddPort(v)
+		return nil
+	}
+	return fmt.Errorf("unknown DatabaseSource numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *DatabaseSourceMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(databasesource.FieldConfiguration) {
+		fields = append(fields, databasesource.FieldConfiguration)
+	}
+	if m.FieldCleared(databasesource.FieldLastError) {
+		fields = append(fields, databasesource.FieldLastError)
+	}
+	if m.FieldCleared(databasesource.FieldLastSyncedAt) {
+		fields = append(fields, databasesource.FieldLastSyncedAt)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *DatabaseSourceMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *DatabaseSourceMutation) ClearField(name string) error {
+	switch name {
+	case databasesource.FieldConfiguration:
+		m.ClearConfiguration()
+		return nil
+	case databasesource.FieldLastError:
+		m.ClearLastError()
+		return nil
+	case databasesource.FieldLastSyncedAt:
+		m.ClearLastSyncedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown DatabaseSource nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *DatabaseSourceMutation) ResetField(name string) error {
+	switch name {
+	case databasesource.FieldSourceID:
+		m.ResetSourceID()
+		return nil
+	case databasesource.FieldProjectID:
+		m.ResetProjectID()
+		return nil
+	case databasesource.FieldDatabaseType:
+		m.ResetDatabaseType()
+		return nil
+	case databasesource.FieldHost:
+		m.ResetHost()
+		return nil
+	case databasesource.FieldPort:
+		m.ResetPort()
+		return nil
+	case databasesource.FieldDatabaseName:
+		m.ResetDatabaseName()
+		return nil
+	case databasesource.FieldUsername:
+		m.ResetUsername()
+		return nil
+	case databasesource.FieldEncryptedConnectionURL:
+		m.ResetEncryptedConnectionURL()
+		return nil
+	case databasesource.FieldConfiguration:
+		m.ResetConfiguration()
+		return nil
+	case databasesource.FieldStatus:
+		m.ResetStatus()
+		return nil
+	case databasesource.FieldLastError:
+		m.ResetLastError()
+		return nil
+	case databasesource.FieldLastSyncedAt:
+		m.ResetLastSyncedAt()
+		return nil
+	case databasesource.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case databasesource.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown DatabaseSource field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *DatabaseSourceMutation) AddedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.source != nil {
+		edges = append(edges, databasesource.EdgeSource)
+	}
+	if m.project != nil {
+		edges = append(edges, databasesource.EdgeProject)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *DatabaseSourceMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case databasesource.EdgeSource:
+		if id := m.source; id != nil {
+			return []ent.Value{*id}
+		}
+	case databasesource.EdgeProject:
+		if id := m.project; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *DatabaseSourceMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 2)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *DatabaseSourceMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *DatabaseSourceMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.clearedsource {
+		edges = append(edges, databasesource.EdgeSource)
+	}
+	if m.clearedproject {
+		edges = append(edges, databasesource.EdgeProject)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *DatabaseSourceMutation) EdgeCleared(name string) bool {
+	switch name {
+	case databasesource.EdgeSource:
+		return m.clearedsource
+	case databasesource.EdgeProject:
+		return m.clearedproject
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *DatabaseSourceMutation) ClearEdge(name string) error {
+	switch name {
+	case databasesource.EdgeSource:
+		m.ClearSource()
+		return nil
+	case databasesource.EdgeProject:
+		m.ClearProject()
+		return nil
+	}
+	return fmt.Errorf("unknown DatabaseSource unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *DatabaseSourceMutation) ResetEdge(name string) error {
+	switch name {
+	case databasesource.EdgeSource:
+		m.ResetSource()
+		return nil
+	case databasesource.EdgeProject:
+		m.ResetProject()
+		return nil
+	}
+	return fmt.Errorf("unknown DatabaseSource edge %s", name)
 }
 
 // DocumentMutation represents an operation that mutates the Document nodes in the graph.
@@ -3839,40 +5071,43 @@ func (m *IngestionJobMutation) ResetEdge(name string) error {
 // ProjectMutation represents an operation that mutates the Project nodes in the graph.
 type ProjectMutation struct {
 	config
-	op                     Op
-	typ                    string
-	id                     *uuid.UUID
-	name                   *string
-	description            *string
-	embedding_provider     *string
-	embedding_model        *string
-	embedding_dimension    *int
-	addembedding_dimension *int
-	llm_provider           *string
-	llm_model              *string
-	created_at             *time.Time
-	updated_at             *time.Time
-	clearedFields          map[string]struct{}
-	owner                  *uuid.UUID
-	clearedowner           bool
-	sources                map[uuid.UUID]struct{}
-	removedsources         map[uuid.UUID]struct{}
-	clearedsources         bool
-	documents              map[uuid.UUID]struct{}
-	removeddocuments       map[uuid.UUID]struct{}
-	cleareddocuments       bool
-	chunks                 map[uuid.UUID]struct{}
-	removedchunks          map[uuid.UUID]struct{}
-	clearedchunks          bool
-	jobs                   map[uuid.UUID]struct{}
-	removedjobs            map[uuid.UUID]struct{}
-	clearedjobs            bool
-	audit_logs             map[uuid.UUID]struct{}
-	removedaudit_logs      map[uuid.UUID]struct{}
-	clearedaudit_logs      bool
-	done                   bool
-	oldValue               func(context.Context) (*Project, error)
-	predicates             []predicate.Project
+	op                      Op
+	typ                     string
+	id                      *uuid.UUID
+	name                    *string
+	description             *string
+	embedding_provider      *string
+	embedding_model         *string
+	embedding_dimension     *int
+	addembedding_dimension  *int
+	llm_provider            *string
+	llm_model               *string
+	created_at              *time.Time
+	updated_at              *time.Time
+	clearedFields           map[string]struct{}
+	owner                   *uuid.UUID
+	clearedowner            bool
+	sources                 map[uuid.UUID]struct{}
+	removedsources          map[uuid.UUID]struct{}
+	clearedsources          bool
+	database_sources        map[uuid.UUID]struct{}
+	removeddatabase_sources map[uuid.UUID]struct{}
+	cleareddatabase_sources bool
+	documents               map[uuid.UUID]struct{}
+	removeddocuments        map[uuid.UUID]struct{}
+	cleareddocuments        bool
+	chunks                  map[uuid.UUID]struct{}
+	removedchunks           map[uuid.UUID]struct{}
+	clearedchunks           bool
+	jobs                    map[uuid.UUID]struct{}
+	removedjobs             map[uuid.UUID]struct{}
+	clearedjobs             bool
+	audit_logs              map[uuid.UUID]struct{}
+	removedaudit_logs       map[uuid.UUID]struct{}
+	clearedaudit_logs       bool
+	done                    bool
+	oldValue                func(context.Context) (*Project, error)
+	predicates              []predicate.Project
 }
 
 var _ ent.Mutation = (*ProjectMutation)(nil)
@@ -4479,6 +5714,60 @@ func (m *ProjectMutation) ResetSources() {
 	m.removedsources = nil
 }
 
+// AddDatabaseSourceIDs adds the "database_sources" edge to the DatabaseSource entity by ids.
+func (m *ProjectMutation) AddDatabaseSourceIDs(ids ...uuid.UUID) {
+	if m.database_sources == nil {
+		m.database_sources = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.database_sources[ids[i]] = struct{}{}
+	}
+}
+
+// ClearDatabaseSources clears the "database_sources" edge to the DatabaseSource entity.
+func (m *ProjectMutation) ClearDatabaseSources() {
+	m.cleareddatabase_sources = true
+}
+
+// DatabaseSourcesCleared reports if the "database_sources" edge to the DatabaseSource entity was cleared.
+func (m *ProjectMutation) DatabaseSourcesCleared() bool {
+	return m.cleareddatabase_sources
+}
+
+// RemoveDatabaseSourceIDs removes the "database_sources" edge to the DatabaseSource entity by IDs.
+func (m *ProjectMutation) RemoveDatabaseSourceIDs(ids ...uuid.UUID) {
+	if m.removeddatabase_sources == nil {
+		m.removeddatabase_sources = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.database_sources, ids[i])
+		m.removeddatabase_sources[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedDatabaseSources returns the removed IDs of the "database_sources" edge to the DatabaseSource entity.
+func (m *ProjectMutation) RemovedDatabaseSourcesIDs() (ids []uuid.UUID) {
+	for id := range m.removeddatabase_sources {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// DatabaseSourcesIDs returns the "database_sources" edge IDs in the mutation.
+func (m *ProjectMutation) DatabaseSourcesIDs() (ids []uuid.UUID) {
+	for id := range m.database_sources {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetDatabaseSources resets all changes to the "database_sources" edge.
+func (m *ProjectMutation) ResetDatabaseSources() {
+	m.database_sources = nil
+	m.cleareddatabase_sources = false
+	m.removeddatabase_sources = nil
+}
+
 // AddDocumentIDs adds the "documents" edge to the Document entity by ids.
 func (m *ProjectMutation) AddDocumentIDs(ids ...uuid.UUID) {
 	if m.documents == nil {
@@ -5011,12 +6300,15 @@ func (m *ProjectMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *ProjectMutation) AddedEdges() []string {
-	edges := make([]string, 0, 6)
+	edges := make([]string, 0, 7)
 	if m.owner != nil {
 		edges = append(edges, project.EdgeOwner)
 	}
 	if m.sources != nil {
 		edges = append(edges, project.EdgeSources)
+	}
+	if m.database_sources != nil {
+		edges = append(edges, project.EdgeDatabaseSources)
 	}
 	if m.documents != nil {
 		edges = append(edges, project.EdgeDocuments)
@@ -5044,6 +6336,12 @@ func (m *ProjectMutation) AddedIDs(name string) []ent.Value {
 	case project.EdgeSources:
 		ids := make([]ent.Value, 0, len(m.sources))
 		for id := range m.sources {
+			ids = append(ids, id)
+		}
+		return ids
+	case project.EdgeDatabaseSources:
+		ids := make([]ent.Value, 0, len(m.database_sources))
+		for id := range m.database_sources {
 			ids = append(ids, id)
 		}
 		return ids
@@ -5077,9 +6375,12 @@ func (m *ProjectMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *ProjectMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 6)
+	edges := make([]string, 0, 7)
 	if m.removedsources != nil {
 		edges = append(edges, project.EdgeSources)
+	}
+	if m.removeddatabase_sources != nil {
+		edges = append(edges, project.EdgeDatabaseSources)
 	}
 	if m.removeddocuments != nil {
 		edges = append(edges, project.EdgeDocuments)
@@ -5103,6 +6404,12 @@ func (m *ProjectMutation) RemovedIDs(name string) []ent.Value {
 	case project.EdgeSources:
 		ids := make([]ent.Value, 0, len(m.removedsources))
 		for id := range m.removedsources {
+			ids = append(ids, id)
+		}
+		return ids
+	case project.EdgeDatabaseSources:
+		ids := make([]ent.Value, 0, len(m.removeddatabase_sources))
+		for id := range m.removeddatabase_sources {
 			ids = append(ids, id)
 		}
 		return ids
@@ -5136,12 +6443,15 @@ func (m *ProjectMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *ProjectMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 6)
+	edges := make([]string, 0, 7)
 	if m.clearedowner {
 		edges = append(edges, project.EdgeOwner)
 	}
 	if m.clearedsources {
 		edges = append(edges, project.EdgeSources)
+	}
+	if m.cleareddatabase_sources {
+		edges = append(edges, project.EdgeDatabaseSources)
 	}
 	if m.cleareddocuments {
 		edges = append(edges, project.EdgeDocuments)
@@ -5166,6 +6476,8 @@ func (m *ProjectMutation) EdgeCleared(name string) bool {
 		return m.clearedowner
 	case project.EdgeSources:
 		return m.clearedsources
+	case project.EdgeDatabaseSources:
+		return m.cleareddatabase_sources
 	case project.EdgeDocuments:
 		return m.cleareddocuments
 	case project.EdgeChunks:
@@ -5199,6 +6511,9 @@ func (m *ProjectMutation) ResetEdge(name string) error {
 	case project.EdgeSources:
 		m.ResetSources()
 		return nil
+	case project.EdgeDatabaseSources:
+		m.ResetDatabaseSources()
+		return nil
 	case project.EdgeDocuments:
 		m.ResetDocuments()
 		return nil
@@ -5218,31 +6533,33 @@ func (m *ProjectMutation) ResetEdge(name string) error {
 // SourceMutation represents an operation that mutates the Source nodes in the graph.
 type SourceMutation struct {
 	config
-	op               Op
-	typ              string
-	id               *uuid.UUID
-	name             *string
-	_type            *string
-	repo_owner       *string
-	repo_name        *string
-	branch           *string
-	last_commit_hash *string
-	sync_status      *source.SyncStatus
-	last_synced_at   *time.Time
-	created_at       *time.Time
-	updated_at       *time.Time
-	clearedFields    map[string]struct{}
-	project          *uuid.UUID
-	clearedproject   bool
-	documents        map[uuid.UUID]struct{}
-	removeddocuments map[uuid.UUID]struct{}
-	cleareddocuments bool
-	jobs             map[uuid.UUID]struct{}
-	removedjobs      map[uuid.UUID]struct{}
-	clearedjobs      bool
-	done             bool
-	oldValue         func(context.Context) (*Source, error)
-	predicates       []predicate.Source
+	op                     Op
+	typ                    string
+	id                     *uuid.UUID
+	name                   *string
+	_type                  *string
+	repo_owner             *string
+	repo_name              *string
+	branch                 *string
+	last_commit_hash       *string
+	sync_status            *source.SyncStatus
+	last_synced_at         *time.Time
+	created_at             *time.Time
+	updated_at             *time.Time
+	clearedFields          map[string]struct{}
+	project                *uuid.UUID
+	clearedproject         bool
+	documents              map[uuid.UUID]struct{}
+	removeddocuments       map[uuid.UUID]struct{}
+	cleareddocuments       bool
+	jobs                   map[uuid.UUID]struct{}
+	removedjobs            map[uuid.UUID]struct{}
+	clearedjobs            bool
+	database_source        *uuid.UUID
+	cleareddatabase_source bool
+	done                   bool
+	oldValue               func(context.Context) (*Source, error)
+	predicates             []predicate.Source
 }
 
 var _ ent.Mutation = (*SourceMutation)(nil)
@@ -5488,9 +6805,22 @@ func (m *SourceMutation) OldRepoOwner(ctx context.Context) (v string, err error)
 	return oldValue.RepoOwner, nil
 }
 
+// ClearRepoOwner clears the value of the "repo_owner" field.
+func (m *SourceMutation) ClearRepoOwner() {
+	m.repo_owner = nil
+	m.clearedFields[source.FieldRepoOwner] = struct{}{}
+}
+
+// RepoOwnerCleared returns if the "repo_owner" field was cleared in this mutation.
+func (m *SourceMutation) RepoOwnerCleared() bool {
+	_, ok := m.clearedFields[source.FieldRepoOwner]
+	return ok
+}
+
 // ResetRepoOwner resets all changes to the "repo_owner" field.
 func (m *SourceMutation) ResetRepoOwner() {
 	m.repo_owner = nil
+	delete(m.clearedFields, source.FieldRepoOwner)
 }
 
 // SetRepoName sets the "repo_name" field.
@@ -5524,9 +6854,22 @@ func (m *SourceMutation) OldRepoName(ctx context.Context) (v string, err error) 
 	return oldValue.RepoName, nil
 }
 
+// ClearRepoName clears the value of the "repo_name" field.
+func (m *SourceMutation) ClearRepoName() {
+	m.repo_name = nil
+	m.clearedFields[source.FieldRepoName] = struct{}{}
+}
+
+// RepoNameCleared returns if the "repo_name" field was cleared in this mutation.
+func (m *SourceMutation) RepoNameCleared() bool {
+	_, ok := m.clearedFields[source.FieldRepoName]
+	return ok
+}
+
 // ResetRepoName resets all changes to the "repo_name" field.
 func (m *SourceMutation) ResetRepoName() {
 	m.repo_name = nil
+	delete(m.clearedFields, source.FieldRepoName)
 }
 
 // SetBranch sets the "branch" field.
@@ -5560,9 +6903,22 @@ func (m *SourceMutation) OldBranch(ctx context.Context) (v string, err error) {
 	return oldValue.Branch, nil
 }
 
+// ClearBranch clears the value of the "branch" field.
+func (m *SourceMutation) ClearBranch() {
+	m.branch = nil
+	m.clearedFields[source.FieldBranch] = struct{}{}
+}
+
+// BranchCleared returns if the "branch" field was cleared in this mutation.
+func (m *SourceMutation) BranchCleared() bool {
+	_, ok := m.clearedFields[source.FieldBranch]
+	return ok
+}
+
 // ResetBranch resets all changes to the "branch" field.
 func (m *SourceMutation) ResetBranch() {
 	m.branch = nil
+	delete(m.clearedFields, source.FieldBranch)
 }
 
 // SetLastCommitHash sets the "last_commit_hash" field.
@@ -5906,6 +7262,45 @@ func (m *SourceMutation) ResetJobs() {
 	m.removedjobs = nil
 }
 
+// SetDatabaseSourceID sets the "database_source" edge to the DatabaseSource entity by id.
+func (m *SourceMutation) SetDatabaseSourceID(id uuid.UUID) {
+	m.database_source = &id
+}
+
+// ClearDatabaseSource clears the "database_source" edge to the DatabaseSource entity.
+func (m *SourceMutation) ClearDatabaseSource() {
+	m.cleareddatabase_source = true
+}
+
+// DatabaseSourceCleared reports if the "database_source" edge to the DatabaseSource entity was cleared.
+func (m *SourceMutation) DatabaseSourceCleared() bool {
+	return m.cleareddatabase_source
+}
+
+// DatabaseSourceID returns the "database_source" edge ID in the mutation.
+func (m *SourceMutation) DatabaseSourceID() (id uuid.UUID, exists bool) {
+	if m.database_source != nil {
+		return *m.database_source, true
+	}
+	return
+}
+
+// DatabaseSourceIDs returns the "database_source" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// DatabaseSourceID instead. It exists only for internal usage by the builders.
+func (m *SourceMutation) DatabaseSourceIDs() (ids []uuid.UUID) {
+	if id := m.database_source; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetDatabaseSource resets all changes to the "database_source" edge.
+func (m *SourceMutation) ResetDatabaseSource() {
+	m.database_source = nil
+	m.cleareddatabase_source = false
+}
+
 // Where appends a list predicates to the SourceMutation builder.
 func (m *SourceMutation) Where(ps ...predicate.Source) {
 	m.predicates = append(m.predicates, ps...)
@@ -6151,6 +7546,15 @@ func (m *SourceMutation) AddField(name string, value ent.Value) error {
 // mutation.
 func (m *SourceMutation) ClearedFields() []string {
 	var fields []string
+	if m.FieldCleared(source.FieldRepoOwner) {
+		fields = append(fields, source.FieldRepoOwner)
+	}
+	if m.FieldCleared(source.FieldRepoName) {
+		fields = append(fields, source.FieldRepoName)
+	}
+	if m.FieldCleared(source.FieldBranch) {
+		fields = append(fields, source.FieldBranch)
+	}
 	if m.FieldCleared(source.FieldLastCommitHash) {
 		fields = append(fields, source.FieldLastCommitHash)
 	}
@@ -6171,6 +7575,15 @@ func (m *SourceMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *SourceMutation) ClearField(name string) error {
 	switch name {
+	case source.FieldRepoOwner:
+		m.ClearRepoOwner()
+		return nil
+	case source.FieldRepoName:
+		m.ClearRepoName()
+		return nil
+	case source.FieldBranch:
+		m.ClearBranch()
+		return nil
 	case source.FieldLastCommitHash:
 		m.ClearLastCommitHash()
 		return nil
@@ -6224,7 +7637,7 @@ func (m *SourceMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *SourceMutation) AddedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 4)
 	if m.project != nil {
 		edges = append(edges, source.EdgeProject)
 	}
@@ -6233,6 +7646,9 @@ func (m *SourceMutation) AddedEdges() []string {
 	}
 	if m.jobs != nil {
 		edges = append(edges, source.EdgeJobs)
+	}
+	if m.database_source != nil {
+		edges = append(edges, source.EdgeDatabaseSource)
 	}
 	return edges
 }
@@ -6257,13 +7673,17 @@ func (m *SourceMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case source.EdgeDatabaseSource:
+		if id := m.database_source; id != nil {
+			return []ent.Value{*id}
+		}
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *SourceMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 4)
 	if m.removeddocuments != nil {
 		edges = append(edges, source.EdgeDocuments)
 	}
@@ -6295,7 +7715,7 @@ func (m *SourceMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *SourceMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 4)
 	if m.clearedproject {
 		edges = append(edges, source.EdgeProject)
 	}
@@ -6304,6 +7724,9 @@ func (m *SourceMutation) ClearedEdges() []string {
 	}
 	if m.clearedjobs {
 		edges = append(edges, source.EdgeJobs)
+	}
+	if m.cleareddatabase_source {
+		edges = append(edges, source.EdgeDatabaseSource)
 	}
 	return edges
 }
@@ -6318,6 +7741,8 @@ func (m *SourceMutation) EdgeCleared(name string) bool {
 		return m.cleareddocuments
 	case source.EdgeJobs:
 		return m.clearedjobs
+	case source.EdgeDatabaseSource:
+		return m.cleareddatabase_source
 	}
 	return false
 }
@@ -6328,6 +7753,9 @@ func (m *SourceMutation) ClearEdge(name string) error {
 	switch name {
 	case source.EdgeProject:
 		m.ClearProject()
+		return nil
+	case source.EdgeDatabaseSource:
+		m.ClearDatabaseSource()
 		return nil
 	}
 	return fmt.Errorf("unknown Source unique edge %s", name)
@@ -6345,6 +7773,9 @@ func (m *SourceMutation) ResetEdge(name string) error {
 		return nil
 	case source.EdgeJobs:
 		m.ResetJobs()
+		return nil
+	case source.EdgeDatabaseSource:
+		m.ResetDatabaseSource()
 		return nil
 	}
 	return fmt.Errorf("unknown Source edge %s", name)

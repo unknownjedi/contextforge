@@ -148,6 +148,11 @@ func (h *SourceHandler) SyncSource(c *gin.Context) {
 		return
 	}
 
+	if src.Type != "" && src.Type != "github" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot trigger repository sync for non-github source; use database sync endpoint"})
+		return
+	}
+
 	// Create ingestion job
 	jobID := uuid.New()
 	if h.jobRepo != nil {

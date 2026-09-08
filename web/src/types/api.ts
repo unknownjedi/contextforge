@@ -173,3 +173,103 @@ export type StreamEvent =
   | { event: "message"; data: { delta: string } }
   | { event: "done"; data: { total_tokens: number; duration_ms: number } }
   | { event: "error"; data: { message: string } };
+
+export type DatabaseType =
+  | "postgres"
+  | "mysql"
+  | "mariadb"
+  | "sqlite"
+  | "sqlserver"
+  | "cockroachdb";
+
+export interface DatabaseSource {
+  id: string; // UUID
+  source_id: string; // UUID
+  project_id: string; // UUID
+  name: string;
+  database_type: DatabaseType;
+  host: string;
+  port: number;
+  database_name: string;
+  username: string;
+  configuration: Record<string, any>;
+  status: "created" | "configured" | "syncing" | "ready" | "failed";
+  last_error?: string;
+  last_synced_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateDatabaseSourceRequest {
+  name: string;
+  database_type: DatabaseType;
+  connection_url: string;
+  configuration?: {
+    mode?: "schema" | "schema_and_data";
+    schemas?: string[];
+    tables?: string[];
+    excluded_columns?: Record<string, string[]>;
+  };
+}
+
+export interface UpdateDatabaseSourceRequest {
+  name?: string;
+  configuration?: Record<string, any>;
+}
+
+export interface ConnectionTestResult {
+  success: boolean;
+  database_type: string;
+  database_version?: string;
+  latency_ms?: number;
+  error_message?: string;
+}
+
+export interface ColumnMetadata {
+  name: string;
+  data_type: string;
+  nullable: boolean;
+  default_value?: string;
+  comment?: string;
+  position: number;
+  is_primary_key: boolean;
+  is_sensitive: boolean;
+}
+
+export interface ForeignKeyMetadata {
+  name?: string;
+  columns: string[];
+  referenced_schema: string;
+  referenced_table: string;
+  referenced_columns: string[];
+}
+
+export interface IndexMetadata {
+  name: string;
+  columns: string[];
+  unique: boolean;
+}
+
+export interface TableMetadata {
+  schema: string;
+  name: string;
+  type: "table" | "view";
+  comment?: string;
+  columns: ColumnMetadata[];
+  primary_key?: string[];
+  foreign_keys?: ForeignKeyMetadata[];
+  indexes?: IndexMetadata[];
+}
+
+export interface SchemaMetadata {
+  name: string;
+  tables: TableMetadata[];
+}
+
+export interface DatabaseMetadata {
+  database_type: string;
+  database_name: string;
+  version?: string;
+  schemas: SchemaMetadata[];
+}
+
