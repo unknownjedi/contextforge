@@ -129,6 +129,7 @@ func (s *Server) MountRoutes(h Handlers, projectRepo repository.ProjectRepositor
 	// Public Auth & Webhooks
 	if h.Auth != nil {
 		v1.POST("/auth/pat", h.Auth.AuthenticatePAT)
+		v1.GET("/auth/auto", h.Auth.AutoAuthenticateDev)
 	}
 	if h.Webhook != nil {
 		v1.POST("/github/webhooks", h.Webhook.HandleWebhook)

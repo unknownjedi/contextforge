@@ -56,6 +56,13 @@ export async function apiFetch<T>(
     headers.set("Accept", "application/json");
   }
 
+  if (typeof window !== "undefined" && !headers.has("Authorization")) {
+    const token = localStorage.getItem("cf_token");
+    if (token) {
+      headers.set("Authorization", `Bearer ${token}`);
+    }
+  }
+
   const config: RequestInit = {
     ...options,
     headers,
@@ -115,13 +122,41 @@ export async function getCurrentUser(): Promise<User> {
 }
 
 export async function loginWithPat(pat: string): Promise<AuthResponse> {
-  return apiFetch<AuthResponse>("/auth/pat", {
+  const res = await apiFetch<AuthResponse>("/auth/pat", {
     method: "POST",
     body: JSON.stringify({ pat }),
   });
+  if (typeof window !== "undefined" && res?.token) {
+    localStorage.setItem("cf_token", res.token);
+    localStorage.setItem("cf_pat", pat);
+  }
+  return res;
+}
+
+export interface AutoAuthResponse {
+  configured: boolean;
+  token?: string;
+  user?: User;
+  message?: string;
+}
+
+export async function autoLoginDev(): Promise<AutoAuthResponse | null> {
+  try {
+    const res = await apiFetch<AutoAuthResponse>("/auth/auto");
+    if (typeof window !== "undefined" && res?.token) {
+      localStorage.setItem("cf_token", res.token);
+    }
+    return res;
+  } catch {
+    return null;
+  }
 }
 
 export async function logout(): Promise<void> {
+  if (typeof window !== "undefined") {
+    localStorage.removeItem("cf_token");
+    localStorage.removeItem("cf_pat");
+  }
   return apiFetch<void>("/auth/logout", {
     method: "POST",
   });
@@ -301,12 +336,20 @@ export async function streamChat(
 
   let response: Response;
   try {
+    const streamHeaders: Record<string, string> = {
+      "Content-Type": "application/json",
+      Accept: "text/event-stream",
+    };
+    if (typeof window !== "undefined") {
+      const token = localStorage.getItem("cf_token");
+      if (token) {
+        streamHeaders["Authorization"] = `Bearer ${token}`;
+      }
+    }
+
     response = await fetch(url, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "text/event-stream",
-      },
+      headers: streamHeaders,
       credentials: "include",
       body: JSON.stringify(req),
       signal,

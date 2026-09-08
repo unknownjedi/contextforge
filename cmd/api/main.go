@@ -113,7 +113,7 @@ func main() {
 	ragService := service.NewRAGService(hybridRetriever, llm)
 
 	// 7. Initialize Handlers
-	authH := handler.NewAuthHandler(authService)
+	authH := handler.NewAuthHandler(authService, cfg.Auth.GithubPAT)
 	projectH := handler.NewProjectHandler(projectRepo, log)
 	sourceH := handler.NewSourceHandler(sourceRepo, jobRepo, queueClient, log)
 	docH := handler.NewDocumentHandler(docRepo, vectorRepo, log)

@@ -54,6 +54,7 @@ type AuthConfig struct {
 	TokenEncryptionKey string        `mapstructure:"token_encryption_key" json:"token_encryption_key"`
 	WebhookSecret      string        `mapstructure:"webhook_secret" json:"webhook_secret"`
 	SessionExpiry      time.Duration `mapstructure:"session_expiry" json:"session_expiry"`
+	GithubPAT          string        `mapstructure:"github_pat" json:"-"`
 }
 
 // ProvidersConfig contains LLM and embedding provider settings.
@@ -111,6 +112,7 @@ func NewDefaultConfig() *Config {
 			TokenEncryptionKey: "",
 			WebhookSecret:      "",
 			SessionExpiry:      72 * time.Hour,
+			GithubPAT:          "",
 		},
 		Providers: ProvidersConfig{
 			Defaults: ProvidersDefaultsConfig{
@@ -210,6 +212,7 @@ func setDefaults(v *viper.Viper, d *Config) {
 	v.SetDefault("auth.jwt_secret", d.Auth.JWTSecret)
 	v.SetDefault("auth.token_encryption_key", d.Auth.TokenEncryptionKey)
 	v.SetDefault("auth.session_expiry", d.Auth.SessionExpiry)
+	v.SetDefault("auth.github_pat", d.Auth.GithubPAT)
 
 	// Providers
 	v.SetDefault("providers.defaults.embedding", d.Providers.Defaults.Embedding)
@@ -245,6 +248,7 @@ func bindEnvVars(v *viper.Viper) {
 	_ = v.BindEnv("auth.jwt_secret", "CF_AUTH_JWT_SECRET", "SESSION_SECRET", "JWT_SECRET")
 	_ = v.BindEnv("auth.token_encryption_key", "CF_AUTH_TOKEN_ENCRYPTION_KEY", "ENCRYPTION_KEY_SECRET")
 	_ = v.BindEnv("auth.session_expiry", "CF_AUTH_SESSION_EXPIRY")
+	_ = v.BindEnv("auth.github_pat", "CF_AUTH_GITHUB_PAT", "GITHUB_PAT", "CF_GITHUB_PAT_FALLBACK")
 
 	// Providers
 	_ = v.BindEnv("providers.defaults.embedding", "CF_PROVIDERS_DEFAULTS_EMBEDDING", "EMBEDDING_PROVIDER")

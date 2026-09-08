@@ -121,6 +121,28 @@ paths:
         '401':
           $ref: '#/components/responses/401Problem'
 
+  /auth/auto:
+    get:
+      summary: Auto-Authenticate Development Session
+      description: Provisions a JWT session using the server's configured GITHUB_PAT without manual copy-paste.
+      security: []
+      responses:
+        '200':
+          description: Developer session provisioned or status returned.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  configured:
+                    type: boolean
+                  token:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/401Problem'
+
   /auth/me:
     get:
       summary: Get Current User Profile

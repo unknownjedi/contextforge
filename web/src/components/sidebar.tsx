@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -13,8 +13,12 @@ import {
   Menu,
   X,
   ExternalLink,
+  Github,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { User } from "@/types/api";
+import { getCurrentUser, loginWithPat, autoLoginDev } from "@/lib/api";
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -22,6 +26,30 @@ export function Sidebar() {
   const [showPatModal, setShowPatModal] = useState(false);
   const [patInput, setPatInput] = useState("");
   const [patSaved, setPatSaved] = useState(false);
+  const [patLoading, setPatLoading] = useState(false);
+  const [patError, setPatError] = useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedPat = localStorage.getItem("cf_pat");
+      if (savedPat) setPatInput(savedPat);
+    }
+    const checkAuth = async () => {
+      try {
+        const u = await getCurrentUser();
+        setUser(u);
+      } catch {
+        const auto = await autoLoginDev();
+        if (auto?.user) {
+          setUser(auto.user);
+        } else {
+          setUser(null);
+        }
+      }
+    };
+    checkAuth();
+  }, []);
 
   const navigation = [
     {
@@ -38,15 +66,24 @@ export function Sidebar() {
     },
   ];
 
-  const handleSavePat = (e: React.FormEvent) => {
+  const handleSavePat = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (patInput.trim()) {
-      localStorage.setItem("cf_pat", patInput.trim());
+    if (!patInput.trim()) return;
+    setPatLoading(true);
+    setPatError(null);
+    try {
+      const res = await loginWithPat(patInput.trim());
+      setUser(res.user);
       setPatSaved(true);
       setTimeout(() => {
         setPatSaved(false);
         setShowPatModal(false);
-      }, 1000);
+        window.location.reload();
+      }, 800);
+    } catch (err: any) {
+      setPatError(err.message || "Failed to validate GitHub PAT. Please verify token permissions.");
+    } finally {
+      setPatLoading(false);
     }
   };
 
@@ -111,14 +148,26 @@ export function Sidebar() {
             Resources
           </p>
           <a
-            href="https://github.com"
+            href="http://localhost:8080/api/docs"
             target="_blank"
             rel="noreferrer"
             className="flex items-center justify-between px-3 py-2 text-sm font-medium text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200 rounded-lg transition-colors"
           >
             <div className="flex items-center gap-3">
-              <BookOpen className="h-4 w-4 text-zinc-400" />
-              <span>Docs & API</span>
+              <BookOpen className="h-4 w-4 text-blue-400" />
+              <span>Interactive API Docs</span>
+            </div>
+            <ExternalLink className="h-3.5 w-3.5 text-zinc-500" />
+          </a>
+          <a
+            href="https://github.com/unknownjedi/contextforge"
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center justify-between px-3 py-2 text-sm font-medium text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200 rounded-lg transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <Github className="h-4 w-4 text-zinc-400" />
+              <span>GitHub Repository</span>
             </div>
             <ExternalLink className="h-3.5 w-3.5 text-zinc-500" />
           </a>
@@ -128,14 +177,21 @@ export function Sidebar() {
       {/* Footer / System Status */}
       <div className="space-y-3 pt-4 border-t border-zinc-800/80">
         <button
-          onClick={() => setShowPatModal(true)}
+          onClick={() => {
+            setPatError(null);
+            setShowPatModal(true);
+          }}
           className="flex w-full items-center justify-between px-3 py-2 text-xs font-medium text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200 rounded-lg border border-zinc-850 transition-colors"
         >
-          <div className="flex items-center gap-2">
-            <Key className="h-3.5 w-3.5 text-amber-400" />
-            <span>GitHub PAT</span>
+          <div className="flex items-center gap-2 truncate">
+            <Key className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+            <span className="truncate">
+              {user ? `@${user.github_login}` : "GitHub PAT"}
+            </span>
           </div>
-          <span className="text-[10px] text-zinc-500">Config</span>
+          <span className="text-[10px] text-zinc-500 shrink-0">
+            {user ? "Active" : "Config"}
+          </span>
         </button>
 
         <div className="flex items-center justify-between px-2 py-1 text-xs text-zinc-400">
@@ -166,13 +222,19 @@ export function Sidebar() {
             <p className="text-xs text-zinc-400 mb-3">
               Configure a GitHub PAT with repository read access for local development ingestion.
             </p>
+            {patError && (
+              <div className="mb-3 rounded-lg bg-rose-950/50 border border-rose-800/60 p-2.5 text-xs text-rose-300">
+                {patError}
+              </div>
+            )}
             <form onSubmit={handleSavePat} className="space-y-3">
               <input
                 type="password"
                 placeholder="ghp_..."
                 value={patInput}
                 onChange={(e) => setPatInput(e.target.value)}
-                className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-blue-500"
+                disabled={patLoading}
+                className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-blue-500 disabled:opacity-50"
               />
               <div className="flex justify-end gap-2">
                 <button
@@ -184,9 +246,19 @@ export function Sidebar() {
                 </button>
                 <button
                   type="submit"
-                  className="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-500 rounded-lg"
+                  disabled={patLoading || !patInput.trim()}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-500 disabled:opacity-50 rounded-lg"
                 >
-                  {patSaved ? "Saved!" : "Save Token"}
+                  {patLoading ? (
+                    <>
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      <span>Validating...</span>
+                    </>
+                  ) : patSaved ? (
+                    "Authenticated!"
+                  ) : (
+                    "Save & Authenticate"
+                  )}
                 </button>
               </div>
             </form>

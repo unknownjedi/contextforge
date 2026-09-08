@@ -13,9 +13,12 @@ import {
   Activity,
   Cpu,
   RefreshCw,
+  Key,
+  X,
+  Loader2,
 } from "lucide-react";
 import type { Project } from "@/types/api";
-import { getProjects } from "@/lib/api";
+import { getProjects, autoLoginDev, loginWithPat, ApiError } from "@/lib/api";
 import { CreateProjectModal } from "@/components/create-project-modal";
 import { formatDate } from "@/lib/utils";
 
@@ -24,18 +27,34 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [authRequired, setAuthRequired] = useState(false);
+  const [isPatModalOpen, setIsPatModalOpen] = useState(false);
+  const [patInput, setPatInput] = useState("");
+  const [patLoading, setPatLoading] = useState(false);
+  const [patError, setPatError] = useState<string | null>(null);
 
   const fetchProjects = async () => {
     setLoading(true);
     setError(null);
+    setAuthRequired(false);
     try {
+      if (typeof window !== "undefined" && !localStorage.getItem("cf_token")) {
+        await autoLoginDev();
+      }
       const res = await getProjects({ page: 1, page_size: 50 });
       setProjects(res.items || []);
     } catch (err: any) {
       console.warn("Failed to fetch projects:", err);
-      setError(
-        "Could not connect to ContextForge backend on localhost:8080. Displaying local workspace state."
-      );
+      if (err instanceof ApiError && err.status === 401) {
+        setAuthRequired(true);
+        setError(
+          "Authentication required: Please configure GITHUB_PAT in .env or connect your GitHub Personal Access Token."
+        );
+      } else {
+        setError(
+          "Could not connect to ContextForge backend on localhost:8080. Displaying local workspace state."
+        );
+      }
       // Fallback initial sample project for UI preview
       setProjects([
         {
@@ -55,6 +74,23 @@ export default function DashboardPage() {
       ]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePatSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!patInput.trim()) return;
+    setPatLoading(true);
+    setPatError(null);
+    try {
+      await loginWithPat(patInput.trim());
+      setIsPatModalOpen(false);
+      setPatInput("");
+      fetchProjects();
+    } catch (err: any) {
+      setPatError(err.message || "Failed to authenticate PAT with GitHub.");
+    } finally {
+      setPatLoading(false);
     }
   };
 
@@ -105,12 +141,33 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {error && (
+      {authRequired ? (
+        <div className="rounded-xl border border-blue-800/50 bg-blue-950/40 p-4 text-xs text-blue-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-900/80 text-blue-300 border border-blue-700/60">
+              <Key className="h-4 w-4 text-amber-400" />
+            </div>
+            <div>
+              <p className="font-semibold text-white">Authentication Required</p>
+              <p className="text-zinc-400 text-[11px] mt-0.5">
+                Set <code className="text-amber-300 font-mono bg-zinc-900 px-1 py-0.5 rounded">GITHUB_PAT</code> in your <code className="text-zinc-300 font-mono">.env</code> file, or connect your Personal Access Token.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setIsPatModalOpen(true)}
+            className="self-start sm:self-auto shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-500 rounded-lg shadow-sm transition-colors"
+          >
+            <Key className="w-3.5 h-3.5 text-amber-300" />
+            <span>Connect GitHub PAT</span>
+          </button>
+        </div>
+      ) : error ? (
         <div className="rounded-xl border border-amber-800/40 bg-amber-950/30 p-4 text-xs text-amber-300/90 flex items-center justify-between">
           <span>{error}</span>
           <span className="text-[11px] text-amber-400/70 font-mono">Backend: offline (preview mode)</span>
         </div>
-      )}
+      ) : null}
 
       {/* Quick Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -291,6 +348,67 @@ export default function DashboardPage() {
         onClose={() => setIsModalOpen(false)}
         onSuccess={(newProj) => setProjects([newProj, ...projects])}
       />
+
+      {/* Dashboard PAT Modal */}
+      {isPatModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="w-full max-w-sm rounded-xl border border-zinc-800 bg-zinc-950 p-5 shadow-2xl">
+            <div className="flex items-center justify-between pb-3 mb-3 border-b border-zinc-800">
+              <h3 className="text-sm font-semibold text-zinc-200 flex items-center gap-2">
+                <Key className="h-4 w-4 text-amber-400" />
+                Connect GitHub PAT
+              </h3>
+              <button
+                onClick={() => setIsPatModalOpen(false)}
+                className="text-zinc-400 hover:text-zinc-200"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <p className="text-xs text-zinc-400 mb-3">
+              Enter your GitHub Personal Access Token to authenticate your local session.
+            </p>
+            {patError && (
+              <div className="mb-3 rounded-lg bg-rose-950/50 border border-rose-800/60 p-2.5 text-xs text-rose-300">
+                {patError}
+              </div>
+            )}
+            <form onSubmit={handlePatSubmit} className="space-y-3">
+              <input
+                type="password"
+                placeholder="ghp_..."
+                value={patInput}
+                onChange={(e) => setPatInput(e.target.value)}
+                disabled={patLoading}
+                className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-blue-500 disabled:opacity-50 font-mono"
+              />
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsPatModalOpen(false)}
+                  className="px-3 py-1.5 text-xs text-zinc-400 hover:bg-zinc-900 rounded-lg"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={patLoading || !patInput.trim()}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-500 disabled:opacity-50 rounded-lg"
+                >
+                  {patLoading ? (
+                    <>
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      <span>Validating...</span>
+                    </>
+                  ) : (
+                    "Authenticate"
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

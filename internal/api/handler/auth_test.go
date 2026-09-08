@@ -44,13 +44,14 @@ func (m *mockAuthService) GetUser(ctx context.Context, userID uuid.UUID) (*ent.U
 	return nil, errors.New("user not found")
 }
 
-func setupAuthRouter(svc *mockAuthService, simulateUserID uuid.UUID) *gin.Engine {
+func setupAuthRouter(svc *mockAuthService, simulateUserID uuid.UUID, devPAT ...string) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
 
-	h := handler.NewAuthHandler(svc)
+	h := handler.NewAuthHandler(svc, devPAT...)
 
 	r.POST("/auth/pat", h.AuthenticatePAT)
+	r.GET("/auth/auto", h.AutoAuthenticateDev)
 	r.POST("/auth/logout", h.Logout)
 
 	authed := r.Group("/")
@@ -178,4 +179,51 @@ func TestAuthHandler_Logout(t *testing.T) {
 	require.NotEmpty(t, cookies)
 	assert.Equal(t, "cf_session", cookies[0].Name)
 	assert.Equal(t, -1, cookies[0].MaxAge)
+}
+
+func TestAuthHandler_AutoAuthenticateDev(t *testing.T) {
+	mockUser := &ent.User{
+		ID:          uuid.New(),
+		GithubLogin: "octocat",
+		Email:       "octocat@github.com",
+		Name:        "The Octocat",
+		CreatedAt:   time.Now(),
+	}
+
+	t.Run("Not configured returns 200 with configured false", func(t *testing.T) {
+		svc := &mockAuthService{validPAT: "ghp_valid", user: mockUser, token: "jwt_tok"}
+		r := setupAuthRouter(svc, uuid.Nil)
+		req := httptest.NewRequest(http.MethodGet, "/auth/auto", nil)
+		w := httptest.NewRecorder()
+
+		r.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		assert.Contains(t, w.Body.String(), `"configured":false`)
+	})
+
+	t.Run("Configured valid PAT returns 200 and token", func(t *testing.T) {
+		svc := &mockAuthService{validPAT: "ghp_valid", user: mockUser, token: "jwt_tok"}
+		r := setupAuthRouter(svc, uuid.Nil, "ghp_valid")
+		req := httptest.NewRequest(http.MethodGet, "/auth/auto", nil)
+		w := httptest.NewRecorder()
+
+		r.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		assert.Contains(t, w.Body.String(), "jwt_tok")
+		assert.Contains(t, w.Body.String(), `"configured":true`)
+	})
+
+	t.Run("Configured invalid PAT returns 401", func(t *testing.T) {
+		svc := &mockAuthService{validPAT: "ghp_valid", user: mockUser, token: "jwt_tok"}
+		r := setupAuthRouter(svc, uuid.Nil, "ghp_wrong")
+		req := httptest.NewRequest(http.MethodGet, "/auth/auto", nil)
+		w := httptest.NewRecorder()
+
+		r.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
+		assert.Contains(t, w.Body.String(), "bad credentials")
+	})
 }

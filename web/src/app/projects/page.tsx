@@ -22,7 +22,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import type { Project, Source } from "@/types/api";
-import { getProjects, getSources, deleteProject } from "@/lib/api";
+import { getProjects, getSources, deleteProject, autoLoginDev, ApiError } from "@/lib/api";
 import { CreateProjectModal } from "@/components/create-project-modal";
 import { formatDate } from "@/lib/utils";
 
@@ -40,6 +40,9 @@ export default function ProjectsPage() {
     setLoading(true);
     setError(null);
     try {
+      if (typeof window !== "undefined" && !localStorage.getItem("cf_token")) {
+        await autoLoginDev();
+      }
       const res = await getProjects({ page: 1, page_size: 100 });
       const items = res.items || [];
       setProjects(items);
@@ -57,7 +60,10 @@ export default function ProjectsPage() {
         })
       );
       setProjectSources(sourcesMap);
-    } catch {
+    } catch (err: any) {
+      if (err instanceof ApiError && err.status === 401) {
+        setError("Authentication required to view projects. Please configure GITHUB_PAT or connect via the sidebar.");
+      }
       // High-fidelity fallback projects for preview and offline dev
       const mockProjects: Project[] = [
         {
