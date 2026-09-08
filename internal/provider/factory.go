@@ -24,18 +24,18 @@ const (
 
 // FactoryConfig contains all configuration parameters to instantiate any LLM or Embedding provider.
 type FactoryConfig struct {
-	Type                  string
-	APIKey                string
-	BaseURL               string
-	Model                 string
-	EmbeddingModel        string
-	Dimension             int
-	BinaryPath            string
-	Args                  []string
-	PassPromptViaStdin    bool
-	Timeout               time.Duration
-	HTTPClient            *http.Client
-	Retry                 RetryConfig
+	Type               string
+	APIKey             string
+	BaseURL            string
+	Model              string
+	EmbeddingModel     string
+	Dimension          int
+	BinaryPath         string
+	Args               []string
+	PassPromptViaStdin bool
+	Timeout            time.Duration
+	HTTPClient         *http.Client
+	Retry              RetryConfig
 }
 
 // LLMConstructor defines a factory function to instantiate an LLMProvider.
@@ -46,9 +46,9 @@ type EmbeddingConstructor func(cfg FactoryConfig) (EmbeddingProvider, error)
 
 // Factory manages registered LLM and Embedding provider constructors.
 type Factory struct {
-	mu                 sync.RWMutex
-	llmConstructors    map[string]LLMConstructor
-	embedConstructors  map[string]EmbeddingConstructor
+	mu                sync.RWMutex
+	llmConstructors   map[string]LLMConstructor
+	embedConstructors map[string]EmbeddingConstructor
 }
 
 // NewFactory initializes a new Provider Factory with all built-in drivers registered.

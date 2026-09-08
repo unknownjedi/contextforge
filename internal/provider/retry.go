@@ -128,7 +128,7 @@ func calculateBackoff(attempt int, cfg RetryConfig, resp *http.Response) time.Du
 	}
 
 	// Add jitter (up to 20%)
-	jitter := time.Duration(rand.Int63n(int64(backoff) / 5 + 1))
+	jitter := time.Duration(rand.Int63n(int64(backoff)/5 + 1))
 	total := backoff + jitter
 	if total > cfg.MaxBackoff {
 		return cfg.MaxBackoff

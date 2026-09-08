@@ -21,7 +21,6 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
-    profiles: ["dev", "development", "default"]
 
   # ----------------------------------------------------------------------------
   # Redis 7 for Asynq job queue and distributed locks (Development)
@@ -39,7 +38,6 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
-    profiles: ["dev", "development", "default"]
 
 volumes:
   postgres_data:

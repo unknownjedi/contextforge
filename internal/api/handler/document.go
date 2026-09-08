@@ -80,3 +80,30 @@ func (h *DocumentHandler) GetDocument(c *gin.Context) {
 
 	c.JSON(http.StatusOK, doc)
 }
+
+// DeleteDocument handles DELETE /projects/:id/documents/:doc_id
+func (h *DocumentHandler) DeleteDocument(c *gin.Context) {
+	projectID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid project ID"})
+		return
+	}
+
+	docID, err := uuid.Parse(c.Param("doc_id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid document ID"})
+		return
+	}
+
+	if err := h.docRepo.Delete(c.Request.Context(), docID, projectID); err != nil {
+		h.logger.Error("failed to delete document", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete document"})
+		return
+	}
+
+	if h.vectorRepo != nil {
+		_ = h.vectorRepo.DeleteChunksByDocumentID(c.Request.Context(), projectID, docID)
+	}
+
+	c.Status(http.StatusNoContent)
+}

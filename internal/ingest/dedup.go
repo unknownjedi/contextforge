@@ -59,8 +59,8 @@ func (m *MemoryDedupCache) PutEmbedding(ctx context.Context, projectID uuid.UUID
 
 // DedupResult holds the partitioned chunks after duplicate analysis.
 type DedupResult struct {
-	ChunksToEmbed  []*model.DocumentChunk
-	CachedChunks   []*model.DocumentChunk
+	ChunksToEmbed   []*model.DocumentChunk
+	CachedChunks    []*model.DocumentChunk
 	EmbeddingsSaved int
 }
 

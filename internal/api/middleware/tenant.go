@@ -17,9 +17,9 @@ const (
 )
 
 var (
-	ErrProjectNotFound   = errors.New("project not found or unauthorized")
-	ErrInvalidProjectID  = errors.New("invalid project ID")
-	ErrProjectNotInCtx   = errors.New("project not found in context")
+	ErrProjectNotFound  = errors.New("project not found or unauthorized")
+	ErrInvalidProjectID = errors.New("invalid project ID")
+	ErrProjectNotInCtx  = errors.New("project not found in context")
 )
 
 // RequireProjectAccess verifies that the authenticated user owns the requested project.

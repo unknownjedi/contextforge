@@ -25,14 +25,14 @@ type FileFetcher interface {
 
 // IngestionPipeline orchestrates the end-to-end repository ingestion and chunk indexing workflow.
 type IngestionPipeline struct {
-	docRepo      repository.DocumentRepository
-	vectorRepo   repository.VectorRepository
-	jobRepo      repository.JobRepository
-	embedder     provider.EmbeddingProvider
-	chunker      *chunk.MultiLanguageChunker
-	dedupCache   ingest.DedupCache
-	fileFetcher  FileFetcher
-	logger       *zap.Logger
+	docRepo     repository.DocumentRepository
+	vectorRepo  repository.VectorRepository
+	jobRepo     repository.JobRepository
+	embedder    provider.EmbeddingProvider
+	chunker     *chunk.MultiLanguageChunker
+	dedupCache  ingest.DedupCache
+	fileFetcher FileFetcher
+	logger      *zap.Logger
 }
 
 func NewIngestionPipeline(

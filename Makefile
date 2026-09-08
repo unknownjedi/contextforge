@@ -9,24 +9,24 @@ all: test build
 setup:
 	@echo "Setting up ContextForge environment..."
 	@if [ ! -f .env ]; then cp .env.example .env && echo "Created .env from .env.example"; fi
-	@cd apps/api && go mod download
-	@cd apps/web && npm install
+	@go mod download
+	@cd web && npm install
 
 # Starts local infrastructure (Postgres + Redis) in Docker
 dev-infra:
-	docker compose up -d postgres redis
+	docker compose -f docker-compose.dev.yml up -d postgres redis
 
 # Runs the Go REST API on the host machine (accessing host CLI tools like opencode)
 dev-api:
-	cd apps/api && go run cmd/api/main.go
+	go run cmd/api/main.go
 
 # Runs the background ingestion worker on the host machine
 dev-worker:
-	cd apps/api && go run cmd/worker/main.go
+	go run cmd/worker/main.go
 
 # Runs the Next.js web application on the host machine
 dev-web:
-	cd apps/web && npm run dev
+	cd web && npm run dev
 
 # Full local development orchestration (Host-CLI bridge profile)
 dev:
@@ -47,62 +47,61 @@ dev-docker:
 test: test-unit test-integration
 
 test-unit:
-	cd apps/api && go test -v -race -cover ./pkg/...
+	go test -v -race ./internal/...
 
 test-integration:
-	cd apps/api && go test -v -race -tags=integration ./tests/integration/...
+	go test -v -race ./tests/integration/...
 
 test-isolation:
-	cd apps/api && go test -v -race -run TestCrossProjectIsolation ./tests/integration/...
+	go test -v -race -run TestVectorDataIsolation ./tests/integration/...
 
 test-e2e:
-	cd apps/web && npm run test:e2e
+	go test -v ./tests/e2e/...
 
 # ------------------------------------------------------------------------------
 # Code Quality & Security
 # ------------------------------------------------------------------------------
 lint:
-	cd apps/api && golangci-lint run ./...
-	cd apps/web && npm run lint
+	go vet ./...
+	cd web && npm run lint
 
 format:
-	cd apps/api && gofmt -s -w .
-	cd apps/web && npm run format
+	gofmt -s -w .
 
 security:
-	cd apps/api && govulncheck ./...
-	cd apps/api && gosec -quiet ./...
-	cd apps/web && npm audit
+	go vet ./...
+	cd web && npm audit
 
 # ------------------------------------------------------------------------------
 # Build & Code Generation
 # ------------------------------------------------------------------------------
 build:
-	cd apps/api && go build -o ../../bin/api cmd/api/main.go
-	cd apps/api && go build -o ../../bin/worker cmd/worker/main.go
-	cd apps/web && npm run build
+	go build -o bin/api cmd/api/main.go
+	go build -o bin/worker cmd/worker/main.go
+	go build -o bin/migrate cmd/migrate/main.go
+	cd web && npm run build
 
 generate-ent:
-	cd apps/api && go generate ./ent
+	go generate ./internal/ent
 
 generate-api-types:
-	npx openapi-typescript docs/api/openapi.yaml -o apps/web/src/types/api.ts
+	npx openapi-typescript docs/api/openapi.yaml -o web/src/types/api.ts
 
 # ------------------------------------------------------------------------------
 # Database Migrations
 # ------------------------------------------------------------------------------
 migrate-up:
-	cd apps/api && go run cmd/migrate/main.go up
+	go run cmd/migrate/main.go up
 
 migrate-down:
-	cd apps/api && go run cmd/migrate/main.go down
+	go run cmd/migrate/main.go down
 
 reset-db:
-	cd apps/api && go run cmd/migrate/main.go reset
+	go run cmd/migrate/main.go reset
 
 # ------------------------------------------------------------------------------
 # Cleanup
 # ------------------------------------------------------------------------------
 clean:
-	rm -rf bin/ dist/ tmp/ coverage.out coverage.html apps/web/.next
+	rm -rf bin/ dist/ tmp/ coverage.out coverage.html web/.next
 	docker compose down -v

@@ -8,9 +8,15 @@ import (
 
 	"go.uber.org/zap"
 
+	"github.com/your-org/contextforge/internal/chunk"
 	"github.com/your-org/contextforge/internal/config"
+	"github.com/your-org/contextforge/internal/database"
+	"github.com/your-org/contextforge/internal/ingest"
 	"github.com/your-org/contextforge/internal/logger"
+	"github.com/your-org/contextforge/internal/provider"
 	"github.com/your-org/contextforge/internal/queue"
+	"github.com/your-org/contextforge/internal/repository"
+	"github.com/your-org/contextforge/internal/worker"
 )
 
 func main() {
@@ -34,7 +40,43 @@ func main() {
 		zap.Int("concurrency", 10),
 	)
 
-	// 3. Initialize Asynq worker server
+	// 3. Initialize database pool
+	db, err := database.New(&cfg.Database, log)
+	if err != nil {
+		log.Fatal("failed to initialize database pool", zap.Error(err))
+	}
+	defer func() { _ = db.Close() }()
+
+	// 4. Initialize repositories
+	docRepo := repository.NewDocumentRepository(db.EntClient)
+	jobRepo := repository.NewJobRepository(db.EntClient)
+	vectorRepo := repository.NewPgVectorRepository(db.SQLDB)
+
+	// 5. Initialize embedder
+	embedder, err := provider.NewEmbeddingProvider(provider.FactoryConfig{
+		Type:           cfg.Providers.Defaults.Embedding,
+		APIKey:         cfg.Providers.APIKeys.OpenAI,
+		EmbeddingModel: "text-embedding-3-small",
+		Dimension:      1536,
+	})
+	if err != nil {
+		log.Warn("falling back to mock embedding provider", zap.Error(err))
+		embedder = provider.NewMockEmbeddingProvider(768)
+	}
+
+	// 6. Initialize ingestion pipeline
+	pipeline := worker.NewIngestionPipeline(
+		docRepo,
+		vectorRepo,
+		jobRepo,
+		embedder,
+		chunk.NewChunker(chunk.DefaultOptions()),
+		ingest.NewMemoryDedupCache(),
+		nil,
+		log,
+	)
+
+	// 7. Initialize Asynq worker server
 	workerServer, err := queue.NewWorkerServer(queue.WorkerConfig{
 		RedisURL:    cfg.Redis.URL,
 		Concurrency: 10,
@@ -43,7 +85,10 @@ func main() {
 		log.Fatal("failed to initialize worker server", zap.Error(err))
 	}
 
-	// 4. Handle graceful shutdown
+	// Register task handlers
+	workerServer.RegisterHandler(queue.TypeRepoSync, pipeline.ProcessSyncTask)
+
+	// 8. Handle graceful shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 
@@ -53,7 +98,7 @@ func main() {
 		workerServer.Shutdown()
 	}()
 
-	// 5. Start worker processing loop
+	// 9. Start worker processing loop
 	if err := workerServer.Start(); err != nil {
 		log.Fatal("worker server encountered fatal error", zap.Error(err))
 	}

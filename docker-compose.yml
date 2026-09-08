@@ -21,7 +21,6 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
-    profiles: ["production", "prod", "full", "default"]
 
   # ----------------------------------------------------------------------------
   # Redis 7 for Asynq job queue and distributed locks
@@ -39,7 +38,6 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
-    profiles: ["production", "prod", "full", "default"]
 
   # ----------------------------------------------------------------------------
   # Go REST API Server
@@ -75,7 +73,6 @@ services:
       retries: 3
       start_period: 5s
     restart: unless-stopped
-    profiles: ["production", "prod", "full", "default"]
 
   # ----------------------------------------------------------------------------
   # Background Ingestion Worker
@@ -106,7 +103,6 @@ services:
       retries: 3
       start_period: 5s
     restart: unless-stopped
-    profiles: ["production", "prod", "full", "default"]
 
   # ----------------------------------------------------------------------------
   # Next.js Web Frontend
@@ -131,7 +127,6 @@ services:
       retries: 3
       start_period: 15s
     restart: unless-stopped
-    profiles: ["production", "prod", "full", "default"]
 
 volumes:
   postgres_data:
