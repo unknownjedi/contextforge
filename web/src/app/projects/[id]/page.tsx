@@ -134,104 +134,13 @@ export default function ProjectDetailPage() {
         });
       }
 
-      if (sourcesData && sourcesData.length > 0) {
-        setSources(sourcesData);
-      } else {
-        // Fallback demo sources
-        setSources([
-          {
-            id: "src-1",
-            project_id: projectId,
-            name: "contextforge/backend",
-            repo_owner: "contextforge",
-            repo_name: "backend",
-            branch: "main",
-            last_commit_hash: "a8f3e2b109c4",
-            sync_status: "synced",
-            last_synced_at: new Date(Date.now() - 3600000 * 2).toISOString(),
-            created_at: new Date(Date.now() - 86400000 * 3).toISOString(),
-          },
-          {
-            id: "src-2",
-            project_id: projectId,
-            name: "contextforge/pgvector-worker",
-            repo_owner: "contextforge",
-            repo_name: "pgvector-worker",
-            branch: "main",
-            last_commit_hash: "3f901c2dae77",
-            sync_status: "synced",
-            last_synced_at: new Date(Date.now() - 3600000 * 5).toISOString(),
-            created_at: new Date(Date.now() - 86400000 * 2).toISOString(),
-          },
-        ]);
-      }
+      setSources(sourcesData || []);
 
       if (dbSourcesData) {
         setDbSources(dbSourcesData);
       }
 
-      if (docsData && docsData.items && docsData.items.length > 0) {
-        setDocuments(docsData.items);
-      } else {
-        // Fallback demo documents
-        setDocuments([
-          {
-            id: "doc-1",
-            project_id: projectId,
-            source_id: "src-1",
-            file_path: "internal/service/rag.go",
-            language: "go",
-            content_hash: "sha256:7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
-            total_chunks: 12,
-            created_at: new Date(Date.now() - 86400000).toISOString(),
-            updated_at: new Date(Date.now() - 3600000).toISOString(),
-          },
-          {
-            id: "doc-2",
-            project_id: projectId,
-            source_id: "src-1",
-            file_path: "internal/repository/pgvector_repo.go",
-            language: "go",
-            content_hash: "sha256:cb222534e321b033d5966df3b36a1ab2c8846c2db5f3248e353fa282d8c38676",
-            total_chunks: 8,
-            created_at: new Date(Date.now() - 86400000).toISOString(),
-            updated_at: new Date(Date.now() - 7200000).toISOString(),
-          },
-          {
-            id: "doc-3",
-            project_id: projectId,
-            source_id: "src-1",
-            file_path: "pkg/auth/jwt.go",
-            language: "go",
-            content_hash: "sha256:1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b",
-            total_chunks: 6,
-            created_at: new Date(Date.now() - 86400000 * 2).toISOString(),
-            updated_at: new Date(Date.now() - 14400000).toISOString(),
-          },
-          {
-            id: "doc-4",
-            project_id: projectId,
-            source_id: "src-2",
-            file_path: "internal/worker/ingest_handler.go",
-            language: "go",
-            content_hash: "sha256:9876543210fedcba9876543210fedcba9876543210fedcba9876543210fedcba",
-            total_chunks: 15,
-            created_at: new Date(Date.now() - 86400000 * 2).toISOString(),
-            updated_at: new Date(Date.now() - 18000000).toISOString(),
-          },
-          {
-            id: "doc-5",
-            project_id: projectId,
-            source_id: "src-2",
-            file_path: "config/pgvector.sql",
-            language: "sql",
-            content_hash: "sha256:a1b2c3d4e5f67890123456789abcdef0123456789abcdef0123456789abcdef0",
-            total_chunks: 4,
-            created_at: new Date(Date.now() - 86400000 * 3).toISOString(),
-            updated_at: new Date(Date.now() - 86400000).toISOString(),
-          },
-        ]);
-      }
+      setDocuments(docsData?.items || []);
     } catch (err: any) {
       setError(err.message || "Failed to load project details");
     } finally {
@@ -696,15 +605,11 @@ func ExecuteContextQuery(ctx context.Context) error {
                 Add Database
               </button>
               <button
-                onClick={() => setShowInlineAddSource(!showInlineAddSource)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
-                  showInlineAddSource
-                    ? "bg-zinc-800 text-zinc-200 border-zinc-700"
-                    : "bg-blue-600 hover:bg-blue-500 text-white border-transparent"
-                }`}
+                onClick={() => setIsAddSourceModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border bg-blue-600 hover:bg-blue-500 text-white border-transparent transition-colors"
               >
                 <Plus className="w-3.5 h-3.5" />
-                {showInlineAddSource ? "Hide Form" : "Add Repository"}
+                Add Source
               </button>
             </div>
           </div>

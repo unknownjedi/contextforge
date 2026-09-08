@@ -120,50 +120,7 @@ export default function ProjectsPage() {
       ];
 
       setProjects(mockProjects);
-      setProjectSources({
-        "11111111-1111-1111-1111-111111111111": [
-          {
-            id: "s1",
-            project_id: "11111111-1111-1111-1111-111111111111",
-            name: "contextforge/backend",
-            repo_owner: "contextforge",
-            repo_name: "backend",
-            branch: "main",
-            sync_status: "synced",
-          },
-          {
-            id: "s2",
-            project_id: "11111111-1111-1111-1111-111111111111",
-            name: "contextforge/pgvector-worker",
-            repo_owner: "contextforge",
-            repo_name: "pgvector-worker",
-            branch: "main",
-            sync_status: "synced",
-          },
-        ],
-        "22222222-2222-2222-2222-222222222222": [
-          {
-            id: "s3",
-            project_id: "22222222-2222-2222-2222-222222222222",
-            name: "contextforge/web",
-            repo_owner: "contextforge",
-            repo_name: "web",
-            branch: "main",
-            sync_status: "synced",
-          },
-        ],
-        "33333333-3333-3333-3333-333333333333": [
-          {
-            id: "s4",
-            project_id: "33333333-3333-3333-3333-333333333333",
-            name: "contextforge/agent-cli",
-            repo_owner: "contextforge",
-            repo_name: "agent-cli",
-            branch: "main",
-            sync_status: "syncing",
-          },
-        ],
-      });
+      setProjectSources({});
     } finally {
       setLoading(false);
     }
