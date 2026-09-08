@@ -265,6 +265,7 @@ export default function ProjectDetailPage() {
     try {
       const payload: CreateSourceRequest = {
         name: `${owner}/${name}`,
+        type: "github",
         repo_url: inlineRepoUrl.trim(),
         repo_owner: owner,
         repo_name: name,

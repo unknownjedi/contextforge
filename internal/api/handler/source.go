@@ -40,7 +40,7 @@ func NewSourceHandler(
 // CreateSourceRequest defines payload for adding a new code source.
 type CreateSourceRequest struct {
 	Name      string `json:"name" binding:"required"`
-	Type      string `json:"type" binding:"required"` // "github"
+	Type      string `json:"type"`      // "github" (default); omit or leave empty to use default
 	RepoOwner string `json:"repo_owner" binding:"required"`
 	RepoName  string `json:"repo_name" binding:"required"`
 	Branch    string `json:"branch"`
@@ -78,6 +78,11 @@ func (h *SourceHandler) CreateSource(c *gin.Context) {
 		return
 	}
 
+	sourceType := req.Type
+	if sourceType == "" {
+		sourceType = "github"
+	}
+
 	branch := req.Branch
 	if branch == "" {
 		branch = "main"
@@ -87,7 +92,7 @@ func (h *SourceHandler) CreateSource(c *gin.Context) {
 		ID:         uuid.New(),
 		ProjectID:  projectID,
 		Name:       req.Name,
-		Type:       req.Type,
+		Type:       sourceType,
 		RepoOwner:  req.RepoOwner,
 		RepoName:   req.RepoName,
 		Branch:     branch,

@@ -85,6 +85,7 @@ export function AddSourceModal({
     try {
       const payload: CreateSourceRequest = {
         name: `${owner}/${name}`,
+        type: "github",
         repo_url: repoUrl.trim() || `https://github.com/${owner}/${name}`,
         repo_owner: owner,
         repo_name: name,
