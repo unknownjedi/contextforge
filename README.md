@@ -86,7 +86,7 @@ This recommended profile runs PostgreSQL and Redis in Docker while running the G
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/contextforge/contextforge.git
+git clone https://github.com/unknownjedi/contextforge.git
 cd contextforge
 
 # 2. Configure environment
