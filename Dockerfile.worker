@@ -1,0 +1,33 @@
+# syntax=docker/dockerfile:1.4
+
+# Stage 1: Build binary using official Go 1.25 Alpine builder
+FROM golang:1.25-alpine AS builder
+
+WORKDIR /src
+
+RUN apk add --no-cache git ca-certificates tzdata
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+RUN CGO_ENABLED=0 GOOS=linux go build \
+    -trimpath \
+    -ldflags="-s -w" \
+    -o /bin/worker ./cmd/worker/main.go
+
+# Stage 2: Minimal hardened runtime image using Alpine 3.20
+FROM alpine:3.20
+
+RUN apk --no-cache add ca-certificates tzdata && \
+    addgroup -g 10001 appgroup && \
+    adduser -u 10001 -G appgroup -s /sbin/nologin -D appuser
+
+WORKDIR /app
+
+COPY --from=builder --chown=10001:10001 /bin/worker /app/worker
+
+USER 10001:10001
+
+ENTRYPOINT ["/app/worker"]

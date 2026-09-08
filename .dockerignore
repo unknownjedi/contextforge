@@ -1,0 +1,22 @@
+.git
+.github
+.DS_Store
+.env*
+!.env.example
+*.tmp
+*.log
+*.swp
+*.bak
+coverage/
+tmp/
+bin/
+dist/
+
+# Go build cache & artifacts
+**/__debug_bin*
+
+# Frontend artifacts
+web/node_modules/
+web/.next/
+web/out/
+web/tsconfig.tsbuildinfo

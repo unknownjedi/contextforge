@@ -1,4 +1,3 @@
-version: "3.8"
 
 services:
   # ----------------------------------------------------------------------------
@@ -22,6 +21,7 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
+    profiles: ["production", "prod", "full", "default"]
 
   # ----------------------------------------------------------------------------
   # Redis 7 for Asynq job queue and distributed locks
@@ -39,9 +39,10 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
+    profiles: ["production", "prod", "full", "default"]
 
   # ----------------------------------------------------------------------------
-  # Go REST API Server (Used in Full Container Stack profile)
+  # Go REST API Server
   # ----------------------------------------------------------------------------
   api:
     build:
@@ -49,14 +50,17 @@ services:
       dockerfile: Dockerfile.api
     container_name: contextforge-api
     environment:
-      - APP_ENV=development
-      - PORT=8080
-      - DATABASE_URL=postgres://postgres:postgrespassword@postgres:5432/contextforge?sslmode=disable
-      - REDIS_URL=redis://redis:6379/0
+      - CF_SERVER_ENV=production
+      - CF_SERVER_PORT=8080
+      - CF_DATABASE_URL=postgres://postgres:postgrespassword@postgres:5432/contextforge?sslmode=disable
+      - CF_REDIS_URL=redis://redis:6379/0
+      - CF_AUTH_JWT_SECRET=production-secret-token-change-me-in-prod-environment-please
+      - CF_AUTH_TOKEN_ENCRYPTION_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
       - APP_BASE_URL=http://localhost:3000
       - API_BASE_URL=http://localhost:8080
     env_file:
-      - .env
+      - path: .env
+        required: false
     ports:
       - "8080:8080"
     depends_on:
@@ -64,11 +68,17 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
     restart: unless-stopped
-    profiles: ["full", "default"]
+    profiles: ["production", "prod", "full", "default"]
 
   # ----------------------------------------------------------------------------
-  # Background Ingestion Worker (Used in Full Container Stack profile)
+  # Background Ingestion Worker
   # ----------------------------------------------------------------------------
   worker:
     build:
@@ -76,21 +86,30 @@ services:
       dockerfile: Dockerfile.worker
     container_name: contextforge-worker
     environment:
-      - APP_ENV=development
-      - DATABASE_URL=postgres://postgres:postgrespassword@postgres:5432/contextforge?sslmode=disable
-      - REDIS_URL=redis://redis:6379/0
+      - CF_SERVER_ENV=production
+      - CF_DATABASE_URL=postgres://postgres:postgrespassword@postgres:5432/contextforge?sslmode=disable
+      - CF_REDIS_URL=redis://redis:6379/0
+      - CF_AUTH_JWT_SECRET=production-secret-token-change-me-in-prod-environment-please
+      - CF_AUTH_TOKEN_ENCRYPTION_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
     env_file:
-      - .env
+      - path: .env
+        required: false
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pidof worker || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
     restart: unless-stopped
-    profiles: ["full", "default"]
+    profiles: ["production", "prod", "full", "default"]
 
   # ----------------------------------------------------------------------------
-  # Next.js Web Frontend (Used in Full Container Stack profile)
+  # Next.js Web Frontend
   # ----------------------------------------------------------------------------
   web:
     build:
@@ -98,13 +117,21 @@ services:
       dockerfile: Dockerfile.web
     container_name: contextforge-web
     environment:
+      - NODE_ENV=production
       - NEXT_PUBLIC_API_BASE_URL=http://localhost:8080
     ports:
       - "3000:3000"
     depends_on:
-      - api
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
     restart: unless-stopped
-    profiles: ["full", "default"]
+    profiles: ["production", "prod", "full", "default"]
 
 volumes:
   postgres_data:

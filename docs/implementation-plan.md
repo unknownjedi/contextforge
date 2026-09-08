@@ -9,14 +9,14 @@ All tasks are strictly sequential by milestone, track dependencies, specify exac
 
 | Milestone | Title | Tasks | Status |
 | :--- | :--- | :--- | :--- |
-| **M1** | Project Foundation & Tooling | CF-001 – CF-004 | TODO |
-| **M2** | Database Layer & Ent Migrations | CF-005 – CF-009 | TODO |
-| **M3** | Cryptography, Auth & GitHub Integration | CF-010 – CF-014 | TODO |
-| **M4** | Vector Repository & Provider Abstractions | CF-015 – CF-020 | TODO |
-| **M5** | Ingestion Pipeline & Background Workers | CF-021 – CF-026 | TODO |
-| **M6** | RAG Engine, Retrieval & Chat Streaming | CF-027 – CF-030 | TODO |
-| **M7** | Web Frontend & Developer UI | CF-031 – CF-034 | TODO |
-| **M8** | Security Hardening, E2E & Production Readiness | CF-035 – CF-038 | TODO |
+| **M1** | Project Foundation & Tooling | CF-001 – CF-004 | **DONE** (4/4) |
+| **M2** | Database Layer & Ent Migrations | CF-005 – CF-009 | **DONE** (5/5) |
+| **M3** | Cryptography, Auth & GitHub Integration | CF-010 – CF-014 | **DONE** (5/5) |
+| **M4** | Vector Repository & Provider Abstractions | CF-015 – CF-020 | **DONE** (6/6) |
+| **M5** | Ingestion Pipeline & Background Workers | CF-021 – CF-026 | **DONE** (6/6) |
+| **M6** | RAG Engine, Retrieval & Chat Streaming | CF-027 – CF-030 | **DONE** (4/4) |
+| **M7** | Web Frontend & Developer UI | CF-031 – CF-034 | **DONE** (4/4) |
+| **M8** | Security Hardening, E2E & Production Readiness | CF-035 – CF-038 | **DONE** (4/4) |
 
 ---
 
@@ -37,7 +37,7 @@ All tasks are strictly sequential by milestone, track dependencies, specify exac
   ```bash
   go vet ./... && go mod verify
   ```
-- **Status**: `TODO`
+- **Status**: `DONE`
 
 ---
 
@@ -56,7 +56,7 @@ All tasks are strictly sequential by milestone, track dependencies, specify exac
   ```bash
   go test -v ./internal/config/...
   ```
-- **Status**: `TODO`
+- **Status**: `DONE`
 
 ---
 
@@ -74,7 +74,7 @@ All tasks are strictly sequential by milestone, track dependencies, specify exac
   ```bash
   go test -v ./internal/logger/...
   ```
-- **Status**: `TODO`
+- **Status**: `DONE`
 
 ---
 
@@ -95,7 +95,7 @@ All tasks are strictly sequential by milestone, track dependencies, specify exac
   ```bash
   go test -v ./internal/api/handler/health_test.go
   ```
-- **Status**: `TODO`
+- **Status**: `DONE`
 
 ---
 
@@ -121,7 +121,7 @@ All tasks are strictly sequential by milestone, track dependencies, specify exac
   ```bash
   go generate ./internal/ent && go test ./internal/ent/...
   ```
-- **Status**: `TODO`
+- **Status**: `DONE`
 
 ---
 
@@ -139,7 +139,7 @@ All tasks are strictly sequential by milestone, track dependencies, specify exac
   ```bash
   make migrate-up && make migrate-down && make migrate-up
   ```
-- **Status**: `TODO`
+- **Status**: `DONE`
 
 ---
 
@@ -156,7 +156,7 @@ All tasks are strictly sequential by milestone, track dependencies, specify exac
   ```bash
   make migrate-up && docker compose exec postgres psql -U contextforge -d contextforge -c "\d document_chunks"
   ```
-- **Status**: `TODO`
+- **Status**: `DONE`
 
 ---
 
@@ -174,7 +174,7 @@ All tasks are strictly sequential by milestone, track dependencies, specify exac
   ```bash
   go test -v ./internal/database/...
   ```
-- **Status**: `TODO`
+- **Status**: `DONE`
 
 ---
 
@@ -193,7 +193,7 @@ All tasks are strictly sequential by milestone, track dependencies, specify exac
   ```bash
   go test -v ./internal/repository/...
   ```
-- **Status**: `TODO`
+- **Status**: `DONE`
 
 ---
 
@@ -212,7 +212,7 @@ All tasks are strictly sequential by milestone, track dependencies, specify exac
   ```bash
   go test -v ./internal/crypto/...
   ```
-- **Status**: `TODO`
+- **Status**: `DONE`
 
 ---
 
@@ -231,7 +231,7 @@ All tasks are strictly sequential by milestone, track dependencies, specify exac
   ```bash
   go test -v ./internal/auth/...
   ```
-- **Status**: `TODO`
+- **Status**: `DONE`
 
 ---
 
@@ -248,7 +248,7 @@ All tasks are strictly sequential by milestone, track dependencies, specify exac
   ```bash
   go test -v ./internal/api/middleware/...
   ```
-- **Status**: `TODO`
+- **Status**: `DONE`
 
 ---
 
@@ -267,7 +267,7 @@ All tasks are strictly sequential by milestone, track dependencies, specify exac
   ```bash
   go test -v ./internal/api/handler/auth_test.go
   ```
-- **Status**: `TODO`
+- **Status**: `DONE`
 
 ---
 
@@ -285,7 +285,7 @@ All tasks are strictly sequential by milestone, track dependencies, specify exac
   ```bash
   go test -v ./internal/api/handler/webhook_test.go
   ```
-- **Status**: `TODO`
+- **Status**: `DONE`
 
 ---
 
@@ -306,7 +306,7 @@ All tasks are strictly sequential by milestone, track dependencies, specify exac
   ```bash
   go test -v ./internal/repository/vector_repo_test.go
   ```
-- **Status**: `TODO`
+- **Status**: `DONE`
 
 ---
 
@@ -323,7 +323,7 @@ All tasks are strictly sequential by milestone, track dependencies, specify exac
   ```bash
   go test -v ./internal/repository/pgvector_repo_test.go
   ```
-- **Status**: `TODO`
+- **Status**: `DONE`
 
 ---
 
@@ -341,7 +341,7 @@ All tasks are strictly sequential by milestone, track dependencies, specify exac
   ```bash
   go test -v ./internal/provider/factory_test.go
   ```
-- **Status**: `TODO`
+- **Status**: `DONE`
 
 ---
 
@@ -360,7 +360,7 @@ All tasks are strictly sequential by milestone, track dependencies, specify exac
   ```bash
   go test -v ./internal/provider/byok_test.go
   ```
-- **Status**: `TODO`
+- **Status**: `DONE`
 
 ---
 
@@ -377,7 +377,7 @@ All tasks are strictly sequential by milestone, track dependencies, specify exac
   ```bash
   go test -v ./internal/provider/cli_bridge_test.go
   ```
-- **Status**: `TODO`
+- **Status**: `DONE`
 
 ---
 
@@ -396,7 +396,7 @@ All tasks are strictly sequential by milestone, track dependencies, specify exac
   ```bash
   go test -v ./internal/provider/embedding_test.go
   ```
-- **Status**: `TODO`
+- **Status**: `DONE`
 
 ---
 
@@ -418,7 +418,7 @@ All tasks are strictly sequential by milestone, track dependencies, specify exac
   ```bash
   go test -v ./internal/queue/...
   ```
-- **Status**: `TODO`
+- **Status**: `DONE`
 
 ---
 
@@ -435,7 +435,7 @@ All tasks are strictly sequential by milestone, track dependencies, specify exac
   ```bash
   go test -v ./internal/ingest/scanner_test.go
   ```
-- **Status**: `TODO`
+- **Status**: `DONE`
 
 ---
 
@@ -454,7 +454,7 @@ All tasks are strictly sequential by milestone, track dependencies, specify exac
   ```bash
   go test -v ./internal/ingest/sync_test.go
   ```
-- **Status**: `TODO`
+- **Status**: `DONE`
 
 ---
 
@@ -473,7 +473,7 @@ All tasks are strictly sequential by milestone, track dependencies, specify exac
   ```bash
   go test -v ./internal/chunk/...
   ```
-- **Status**: `TODO`
+- **Status**: `DONE`
 
 ---
 
@@ -490,7 +490,7 @@ All tasks are strictly sequential by milestone, track dependencies, specify exac
   ```bash
   go test -v ./internal/ingest/dedup_test.go
   ```
-- **Status**: `TODO`
+- **Status**: `DONE`
 
 ---
 
@@ -507,7 +507,7 @@ All tasks are strictly sequential by milestone, track dependencies, specify exac
   ```bash
   go test -v ./internal/worker/...
   ```
-- **Status**: `TODO`
+- **Status**: `DONE`
 
 ---
 
@@ -527,7 +527,7 @@ All tasks are strictly sequential by milestone, track dependencies, specify exac
   ```bash
   go test -v ./internal/retrieval/...
   ```
-- **Status**: `TODO`
+- **Status**: `DONE`
 
 ---
 
@@ -545,7 +545,7 @@ All tasks are strictly sequential by milestone, track dependencies, specify exac
   ```bash
   go test -v ./internal/rag/citation_test.go
   ```
-- **Status**: `TODO`
+- **Status**: `DONE`
 
 ---
 
@@ -562,7 +562,7 @@ All tasks are strictly sequential by milestone, track dependencies, specify exac
   ```bash
   go test -v ./internal/service/rag_service_test.go
   ```
-- **Status**: `TODO`
+- **Status**: `DONE`
 
 ---
 
@@ -581,7 +581,7 @@ All tasks are strictly sequential by milestone, track dependencies, specify exac
   ```bash
   go test -v ./internal/api/handler/chat_test.go
   ```
-- **Status**: `TODO`
+- **Status**: `DONE`
 
 ---
 
@@ -603,7 +603,7 @@ All tasks are strictly sequential by milestone, track dependencies, specify exac
   ```bash
   cd web && pnpm build
   ```
-- **Status**: `TODO`
+- **Status**: `DONE`
 
 ---
 
@@ -620,7 +620,7 @@ All tasks are strictly sequential by milestone, track dependencies, specify exac
   ```bash
   cd web && pnpm typecheck
   ```
-- **Status**: `TODO`
+- **Status**: `DONE`
 
 ---
 
@@ -638,9 +638,9 @@ All tasks are strictly sequential by milestone, track dependencies, specify exac
   - UI renders project details, polls ingestion job status, and handles errors cleanly.
 - **Verification Command**:
   ```bash
-  cd web && pnpm test
+  cd web && npm run build
   ```
-- **Status**: `TODO`
+- **Status**: `DONE`
 
 ---
 
@@ -658,9 +658,9 @@ All tasks are strictly sequential by milestone, track dependencies, specify exac
   - Clicking citation highlights file path, start line, and end line snippet in modal.
 - **Verification Command**:
   ```bash
-  cd web && pnpm build
+  cd web && npm run build
   ```
-- **Status**: `TODO`
+- **Status**: `DONE`
 
 ---
 
@@ -677,9 +677,9 @@ All tasks are strictly sequential by milestone, track dependencies, specify exac
   - Ent relational queries reject Project A IDs with 404/403.
 - **Verification Command**:
   ```bash
-  go test -v -tags=integration ./tests/integration/isolation_test.go
+  go test -v ./tests/integration/...
   ```
-- **Status**: `TODO`
+- **Status**: `DONE`
 
 ---
 
@@ -696,7 +696,7 @@ All tasks are strictly sequential by milestone, track dependencies, specify exac
   ```bash
   go test -v ./internal/api/middleware/ratelimit_test.go
   ```
-- **Status**: `TODO`
+- **Status**: `DONE`
 
 ---
 
@@ -711,9 +711,9 @@ All tasks are strictly sequential by milestone, track dependencies, specify exac
   - DB is verified clean after test completion.
 - **Verification Command**:
   ```bash
-  make test-e2e
+  go test -v ./tests/e2e/...
   ```
-- **Status**: `TODO`
+- **Status**: `DONE`
 
 ---
 
@@ -732,4 +732,4 @@ All tasks are strictly sequential by milestone, track dependencies, specify exac
   ```bash
   make security && docker build -t contextforge-api:test -f Dockerfile.api .
   ```
-- **Status**: `TODO`
+- **Status**: `DONE`

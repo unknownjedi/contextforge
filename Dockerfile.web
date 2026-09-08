@@ -1,0 +1,52 @@
+# syntax=docker/dockerfile:1.4
+
+# Stage 1: Install dependencies
+FROM node:20-alpine AS deps
+RUN apk add --no-cache libc6-compat
+WORKDIR /app
+
+RUN corepack enable pnpm
+
+COPY web/package.json web/pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+
+# Stage 2: Build Next.js application
+FROM node:20-alpine AS builder
+WORKDIR /app
+
+RUN corepack enable pnpm
+
+COPY --from=deps /app/node_modules ./node_modules
+COPY web ./
+
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=production
+
+RUN pnpm build
+
+# Stage 3: Minimal hardened runner
+FROM node:20-alpine AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+
+# Non-root user with UID 10001
+RUN addgroup -g 10001 -S nodejs && \
+    adduser -S nextjs -u 10001 -G nodejs
+
+# Copy standalone build output and static assets
+COPY --from=builder --chown=10001:10001 /app/.next/standalone ./
+COPY --from=builder --chown=10001:10001 /app/.next/static ./.next/static
+RUN mkdir -p /app/public && chown -R 10001:10001 /app
+
+USER 10001:10001
+
+EXPOSE 3000
+
+HEALTHCHECK --interval=15s --timeout=5s --start-period=15s --retries=3 \
+    CMD wget -qO- http://localhost:3000/ || exit 1
+
+CMD ["node", "server.js"]
