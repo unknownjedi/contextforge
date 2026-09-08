@@ -2,7 +2,7 @@
 
 > Open-source, self-hostable, project-scoped RAG knowledge platform for turning GitHub repositories, pull requests, issues, URLs, and documents into searchable AI knowledge bases with grounded answers and verifiable citations.
 
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Go Version](https://img.shields.io/badge/Go-1.22+-00ADD8.svg)](https://go.dev/)
 [![Next.js](https://img.shields.io/badge/Next.js-14+-black.svg)](https://nextjs.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16%20%2B%20pgvector-336791.svg)](https://github.com/pgvector/pgvector)
@@ -186,4 +186,4 @@ make security
 
 ## 📄 License
 
-ContextForge is licensed under the [Apache License 2.0](LICENSE).
+ContextForge is licensed under the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0). See the [LICENSE](./LICENSE) / [LICENSE.md](./LICENSE.md) file for details.
