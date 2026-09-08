@@ -117,7 +117,7 @@ func main() {
 	docH := handler.NewDocumentHandler(docRepo, vectorRepo, log)
 	jobH := handler.NewJobHandler(jobRepo, log)
 	chatH := handler.NewChatHandler(ragService, log)
-	webhookH := handler.NewWebhookHandler("", log)
+	webhookH := handler.NewWebhookHandler(cfg.Auth.WebhookSecret, log)
 
 	// 8. Initialize server router & dependency checkers
 	server := api.NewServer(cfg, log, db, nil)
@@ -155,5 +155,13 @@ func main() {
 		log.Error("server forced to shutdown", zap.Error(err))
 	} else {
 		log.Info("server gracefully stopped")
+	}
+
+	server.Close()
+	if queueClient != nil {
+		_ = queueClient.Close()
+	}
+	if err := db.Close(); err != nil {
+		log.Error("error closing database", zap.Error(err))
 	}
 }

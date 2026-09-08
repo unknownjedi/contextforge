@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
@@ -135,33 +136,59 @@ func (p *IngestionPipeline) ProcessSyncTask(ctx context.Context, task *asynq.Tas
 	processedCount := 0
 
 	for i, file := range filesToProcess {
+		if ingest.IsBinaryContent(file.Content) || strings.TrimSpace(file.Content) == "" {
+			p.logger.Debug("skipping binary or empty file", zap.String("path", file.Path))
+			if p.docRepo != nil {
+				if existingDoc, err := p.docRepo.GetByPath(ctx, projectID, sourceID, file.Path); err == nil && existingDoc != nil {
+					if p.vectorRepo != nil {
+						_ = p.vectorRepo.DeleteChunksByDocumentID(ctx, projectID, existingDoc.ID)
+					}
+					_ = p.docRepo.Delete(ctx, existingDoc.ID, projectID)
+				}
+			}
+			processedCount++
+			continue
+		}
+
+		// Chunk file content
+		rawChunks := p.chunker.ChunkText(file.Content, file.Language)
+		if len(rawChunks) == 0 {
+			if p.docRepo != nil {
+				if existingDoc, err := p.docRepo.GetByPath(ctx, projectID, sourceID, file.Path); err == nil && existingDoc != nil {
+					if p.vectorRepo != nil {
+						_ = p.vectorRepo.DeleteChunksByDocumentID(ctx, projectID, existingDoc.ID)
+					}
+					_ = p.docRepo.Delete(ctx, existingDoc.ID, projectID)
+				}
+			}
+			processedCount++
+			continue
+		}
+
 		var docID uuid.UUID
+		var isExisting bool
 		if p.docRepo != nil {
 			existingDoc, err := p.docRepo.GetByPath(ctx, projectID, sourceID, file.Path)
 			if err == nil && existingDoc != nil {
 				docID = existingDoc.ID
-				if p.vectorRepo != nil {
-					_ = p.vectorRepo.DeleteChunksByDocumentID(ctx, projectID, docID)
-				}
+				isExisting = true
 			} else {
 				docID = uuid.New()
-				_, _ = p.docRepo.Create(ctx, &ent.Document{
+				if _, err := p.docRepo.Create(ctx, &ent.Document{
 					ID:          docID,
 					ProjectID:   projectID,
 					SourceID:    sourceID,
 					FilePath:    file.Path,
 					Language:    file.Language,
 					ContentHash: file.ContentHash,
-				})
+				}); err != nil {
+					p.logger.Error("failed to create document record", zap.Error(err), zap.String("path", file.Path))
+					processedCount++
+					continue
+				}
 			}
 		} else {
 			docID = uuid.New()
-		}
-
-		// Chunk file content
-		rawChunks := p.chunker.ChunkText(file.Content, file.Language)
-		if len(rawChunks) == 0 {
-			continue
 		}
 
 		var docChunks []*model.DocumentChunk
@@ -183,7 +210,16 @@ func (p *IngestionPipeline) ProcessSyncTask(ctx context.Context, task *asynq.Tas
 		dedup := ingest.FilterDuplicateChunks(ctx, p.dedupCache, projectID, docChunks)
 
 		// Generate embeddings for unique chunks
-		if len(dedup.ChunksToEmbed) > 0 && p.embedder != nil {
+		if len(dedup.ChunksToEmbed) > 0 {
+			if p.embedder == nil {
+				errMsg := fmt.Sprintf("embedding provider is not configured for indexing %s", file.Path)
+				p.logger.Error(errMsg)
+				if p.jobRepo != nil && jobID != uuid.Nil {
+					_ = p.jobRepo.Fail(ctx, jobID, projectID, errMsg)
+				}
+				return fmt.Errorf("embedding provider required for %s", file.Path)
+			}
+
 			var texts []string
 			for _, c := range dedup.ChunksToEmbed {
 				texts = append(texts, c.Content)
@@ -191,19 +227,47 @@ func (p *IngestionPipeline) ProcessSyncTask(ctx context.Context, task *asynq.Tas
 
 			embeddings, err := p.embedder.EmbedDocuments(ctx, texts)
 			if err != nil {
-				p.logger.Error("failed to generate embeddings", zap.Error(err))
-			} else {
-				for idx, emb := range embeddings {
-					dedup.ChunksToEmbed[idx].Embedding = emb
+				errMsg := fmt.Sprintf("generating embeddings failed for %s: %v", file.Path, err)
+				p.logger.Error(errMsg, zap.Error(err))
+				if p.jobRepo != nil && jobID != uuid.Nil {
+					_ = p.jobRepo.Fail(ctx, jobID, projectID, errMsg)
+				}
+				return fmt.Errorf("generating embeddings for %s: %w", file.Path, err)
+			}
+
+			if len(embeddings) != len(dedup.ChunksToEmbed) {
+				errMsg := fmt.Sprintf("embedding count mismatch for %s: expected %d, got %d", file.Path, len(dedup.ChunksToEmbed), len(embeddings))
+				p.logger.Error(errMsg)
+				if p.jobRepo != nil && jobID != uuid.Nil {
+					_ = p.jobRepo.Fail(ctx, jobID, projectID, errMsg)
+				}
+				return fmt.Errorf("embedding count mismatch for %s: %d != %d", file.Path, len(embeddings), len(dedup.ChunksToEmbed))
+			}
+
+			for idx, emb := range embeddings {
+				dedup.ChunksToEmbed[idx].Embedding = emb
+				if p.dedupCache != nil {
 					p.dedupCache.PutEmbedding(ctx, projectID, dedup.ChunksToEmbed[idx].ContentHash, emb)
 				}
 			}
 		}
 
+		// Delete old chunks for existing document before saving newly embedded chunks
+		if isExisting && p.vectorRepo != nil {
+			_ = p.vectorRepo.DeleteChunksByDocumentID(ctx, projectID, docID)
+		}
+
 		// Save chunks to vector repository
 		allChunks := append(dedup.ChunksToEmbed, dedup.CachedChunks...)
 		if p.vectorRepo != nil && len(allChunks) > 0 {
-			_ = p.vectorRepo.UpsertChunks(ctx, allChunks)
+			if err := p.vectorRepo.UpsertChunks(ctx, allChunks); err != nil {
+				errMsg := fmt.Sprintf("vector upsert failed for %s: %v", file.Path, err)
+				p.logger.Error(errMsg, zap.Error(err))
+				if p.jobRepo != nil && jobID != uuid.Nil {
+					_ = p.jobRepo.Fail(ctx, jobID, projectID, errMsg)
+				}
+				return fmt.Errorf("upserting chunks for %s: %w", file.Path, err)
+			}
 		}
 
 		// Update document chunk count

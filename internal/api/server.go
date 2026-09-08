@@ -31,9 +31,10 @@ type Handlers struct {
 
 // Server encapsulates the HTTP router and server lifecycle.
 type Server struct {
-	router *gin.Engine
-	config *config.Config
-	logger *zap.Logger
+	router       *gin.Engine
+	config       *config.Config
+	logger       *zap.Logger
+	rateLimiters []*middleware.RateLimiter
 }
 
 // NewServer configures Gin engine with middleware and routes.
@@ -118,6 +119,7 @@ func (s *Server) MountRoutes(h Handlers, projectRepo repository.ProjectRepositor
 	generalLimiter := middleware.NewRateLimiter(100.0/60.0, 100)
 	chatLimiter := middleware.NewRateLimiter(20.0/60.0, 20)
 	syncLimiter := middleware.NewRateLimiter(10.0/60.0, 10)
+	s.rateLimiters = append(s.rateLimiters, generalLimiter, chatLimiter, syncLimiter)
 
 	// 3. /api/v1 route group
 	v1 := s.router.Group("/api/v1")
@@ -198,3 +200,13 @@ func (s *Server) HTTPServer() *http.Server {
 		IdleTimeout:       120 * time.Second,
 	}
 }
+
+// Close gracefully terminates background resources including rate limiters.
+func (s *Server) Close() {
+	for _, rl := range s.rateLimiters {
+		if rl != nil {
+			rl.Close()
+		}
+	}
+}
+

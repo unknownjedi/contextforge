@@ -274,3 +274,33 @@ func TestRateLimiter_CustomKeyFuncAndConvenience(t *testing.T) {
 	r.ServeHTTP(wB, reqB)
 	assert.Equal(t, http.StatusOK, wB.Code)
 }
+
+func TestRateLimiter_ConcurrentAccessAndCleanup(t *testing.T) {
+	limiter := middleware.NewRateLimiter(100.0, 50,
+		middleware.WithTTL(50*time.Millisecond),
+		middleware.WithCleanupInterval(10*time.Millisecond),
+	)
+	defer limiter.Close()
+
+	done := make(chan struct{})
+	concurrency := 50
+
+	for i := 0; i < concurrency; i++ {
+		go func(id int) {
+			key := "client-" + strconv.Itoa(id%5)
+			for {
+				select {
+				case <-done:
+					return
+				default:
+					limiter.Allow(key)
+					limiter.VisitorCount()
+					time.Sleep(1 * time.Millisecond)
+				}
+			}
+		}(i)
+	}
+
+	time.Sleep(100 * time.Millisecond)
+	close(done)
+}

@@ -52,6 +52,7 @@ type RedisConfig struct {
 type AuthConfig struct {
 	JWTSecret          string        `mapstructure:"jwt_secret" json:"jwt_secret"`
 	TokenEncryptionKey string        `mapstructure:"token_encryption_key" json:"token_encryption_key"`
+	WebhookSecret      string        `mapstructure:"webhook_secret" json:"webhook_secret"`
 	SessionExpiry      time.Duration `mapstructure:"session_expiry" json:"session_expiry"`
 }
 
@@ -108,6 +109,7 @@ func NewDefaultConfig() *Config {
 		Auth: AuthConfig{
 			JWTSecret:          "",
 			TokenEncryptionKey: "",
+			WebhookSecret:      "",
 			SessionExpiry:      72 * time.Hour,
 		},
 		Providers: ProvidersConfig{

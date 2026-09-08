@@ -228,6 +228,21 @@ func TestHybridRetriever_Retrieve(t *testing.T) {
 			assert.Contains(t, r.FilePath, "internal/crypto")
 		}
 	})
+
+	t.Run("Zero vector results returns empty slice", func(t *testing.T) {
+		emptyRepo := repository.NewMockVectorRepository()
+		emptyRetriever := retrieval.NewHybridRetriever(emptyRepo, embedProvider)
+
+		results, err := emptyRetriever.Retrieve(ctx, projectID, "nonexistent term", 5, 0, nil)
+		require.NoError(t, err)
+		assert.Empty(t, results)
+	})
+
+	t.Run("Query with regex characters does not panic or error", func(t *testing.T) {
+		results, err := retriever.Retrieve(ctx, projectID, "func(a, b *[]string) + [0-9]?", 5, 0, nil)
+		require.NoError(t, err)
+		assert.NotNil(t, results)
+	})
 }
 
 // mockRepoWithPaths wraps MockVectorRepository to inject FilePath and SourceID into results.

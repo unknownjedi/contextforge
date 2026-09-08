@@ -1,7 +1,6 @@
 package chunk
 
 import (
-	"bufio"
 	"crypto/sha256"
 	"encoding/hex"
 	"strings"
@@ -88,12 +87,10 @@ func (c *MultiLanguageChunker) ChunkText(content string, language string) []Chun
 		return nil
 	}
 
-	// 1. Break content into lines preserving exact line indexing
-	var lines []string
-	scanner := bufio.NewScanner(strings.NewReader(content))
-	for scanner.Scan() {
-		lines = append(lines, scanner.Text())
-	}
+	// 1. Break content into lines preserving exact line indexing without 64KB bufio.Scanner limit
+	normalized := strings.ReplaceAll(content, "\r\n", "\n")
+	normalized = strings.ReplaceAll(normalized, "\r", "\n")
+	lines := strings.Split(strings.TrimSuffix(normalized, "\n"), "\n")
 	if len(lines) == 0 {
 		lines = []string{content}
 	}
@@ -113,9 +110,9 @@ func (c *MultiLanguageChunker) ChunkText(content string, language string) []Chun
 				lineTokens = 1 // Newline cost
 			}
 
-			if currentTokens+lineTokens > c.options.TargetTokens && (endIdx-startIdx) >= 5 {
+			if currentTokens+lineTokens > c.options.TargetTokens && ((endIdx-startIdx) >= 5 || currentTokens >= c.options.TargetTokens*2) {
 				// We hit target token threshold, try to break on structural boundary if possible
-				if isStructuralBoundary(lines[endIdx], language) || (endIdx-startIdx) >= c.options.MaxLines {
+				if isStructuralBoundary(lines[endIdx], language) || (endIdx-startIdx) >= c.options.MaxLines || currentTokens >= c.options.TargetTokens*2 {
 					break
 				}
 			}

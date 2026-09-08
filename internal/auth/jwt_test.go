@@ -95,12 +95,12 @@ func TestValidateToken_TamperedSignature(t *testing.T) {
 		t.Fatalf("unexpected token parts: %d", len(parts))
 	}
 
-	// Tamper the signature portion (3rd part)
+	// Tamper the signature portion (3rd part) - tamper sig[0] to avoid base64 trailing padding bit malleability
 	sig := []byte(parts[2])
-	if sig[len(sig)-1] == 'A' {
-		sig[len(sig)-1] = 'B'
+	if sig[0] == 'A' {
+		sig[0] = 'B'
 	} else {
-		sig[len(sig)-1] = 'A'
+		sig[0] = 'A'
 	}
 	tamperedToken := parts[0] + "." + parts[1] + "." + string(sig)
 

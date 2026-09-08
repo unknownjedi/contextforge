@@ -107,3 +107,198 @@ func TestIngestionPipeline_EndToEnd(t *testing.T) {
 		assert.GreaterOrEqual(t, m.Chunk.EndLine, m.Chunk.StartLine)
 	}
 }
+
+func TestIngestionPipeline_EmbedderError(t *testing.T) {
+	ctx := context.Background()
+	projectID := uuid.New()
+	sourceID := uuid.New()
+	jobID := uuid.New()
+
+	vectorRepo := repository.NewMockVectorRepository()
+	embedder := provider.NewMockEmbeddingProvider(768)
+	embedder.CustomEmbed = func(ctx context.Context, texts []string) ([][]float32, error) {
+		return nil, assert.AnError
+	}
+
+	files := []*ingest.ScannedFile{
+		{
+			Path:        "main.go",
+			Language:    "go",
+			Content:     "package main\nfunc main() {}",
+			ContentHash: "hash_fail",
+			SizeBytes:   25,
+		},
+	}
+
+	pipeline := worker.NewIngestionPipeline(
+		nil,
+		vectorRepo,
+		nil,
+		embedder,
+		chunk.NewChunker(chunk.DefaultOptions()),
+		ingest.NewMemoryDedupCache(),
+		&mockFetcher{files: files},
+		zap.NewNop(),
+	)
+
+	payloadBytes, err := json.Marshal(queue.RepoSyncPayload{
+		JobID:     jobID,
+		ProjectID: projectID,
+		SourceID:  sourceID,
+	})
+	require.NoError(t, err)
+
+	task := asynq.NewTask(queue.TypeRepoSync, payloadBytes)
+	err = pipeline.ProcessSyncTask(ctx, task)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "generating embeddings")
+}
+
+func TestIngestionPipeline_EmbedderCountMismatch(t *testing.T) {
+	ctx := context.Background()
+	projectID := uuid.New()
+	sourceID := uuid.New()
+	jobID := uuid.New()
+
+	vectorRepo := repository.NewMockVectorRepository()
+	embedder := provider.NewMockEmbeddingProvider(768)
+	// Return fewer embeddings than requested
+	embedder.CustomEmbed = func(ctx context.Context, texts []string) ([][]float32, error) {
+		return [][]float32{}, nil
+	}
+
+	files := []*ingest.ScannedFile{
+		{
+			Path:        "main.go",
+			Language:    "go",
+			Content:     "package main\nfunc main() {}",
+			ContentHash: "hash_mismatch",
+			SizeBytes:   25,
+		},
+	}
+
+	pipeline := worker.NewIngestionPipeline(
+		nil,
+		vectorRepo,
+		nil,
+		embedder,
+		chunk.NewChunker(chunk.DefaultOptions()),
+		ingest.NewMemoryDedupCache(),
+		&mockFetcher{files: files},
+		zap.NewNop(),
+	)
+
+	payloadBytes, err := json.Marshal(queue.RepoSyncPayload{
+		JobID:     jobID,
+		ProjectID: projectID,
+		SourceID:  sourceID,
+	})
+	require.NoError(t, err)
+
+	task := asynq.NewTask(queue.TypeRepoSync, payloadBytes)
+	err = pipeline.ProcessSyncTask(ctx, task)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "embedding count mismatch")
+}
+
+func TestIngestionPipeline_NilEmbedder(t *testing.T) {
+	ctx := context.Background()
+	projectID := uuid.New()
+	sourceID := uuid.New()
+	jobID := uuid.New()
+
+	vectorRepo := repository.NewMockVectorRepository()
+
+	files := []*ingest.ScannedFile{
+		{
+			Path:        "main.go",
+			Language:    "go",
+			Content:     "package main\nfunc main() {}",
+			ContentHash: "hash_no_embedder",
+			SizeBytes:   25,
+		},
+	}
+
+	pipeline := worker.NewIngestionPipeline(
+		nil,
+		vectorRepo,
+		nil,
+		nil, // Nil embedder
+		chunk.NewChunker(chunk.DefaultOptions()),
+		ingest.NewMemoryDedupCache(),
+		&mockFetcher{files: files},
+		zap.NewNop(),
+	)
+
+	payloadBytes, err := json.Marshal(queue.RepoSyncPayload{
+		JobID:     jobID,
+		ProjectID: projectID,
+		SourceID:  sourceID,
+	})
+	require.NoError(t, err)
+
+	task := asynq.NewTask(queue.TypeRepoSync, payloadBytes)
+	err = pipeline.ProcessSyncTask(ctx, task)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "embedding provider required")
+}
+
+func TestIngestionPipeline_EmptyAndBinaryFiltering(t *testing.T) {
+	ctx := context.Background()
+	projectID := uuid.New()
+	sourceID := uuid.New()
+	jobID := uuid.New()
+
+	vectorRepo := repository.NewMockVectorRepository()
+	embedder := provider.NewMockEmbeddingProvider(768)
+
+	files := []*ingest.ScannedFile{
+		{
+			Path:        "empty.go",
+			Language:    "go",
+			Content:     "   \n\n\t  ",
+			ContentHash: "hash_empty",
+			SizeBytes:   10,
+		},
+		{
+			Path:        "binary.bin",
+			Language:    "binary",
+			Content:     "binary\x00data\x00here",
+			ContentHash: "hash_binary",
+			SizeBytes:   15,
+		},
+	}
+
+	pipeline := worker.NewIngestionPipeline(
+		nil,
+		vectorRepo,
+		nil,
+		embedder,
+		chunk.NewChunker(chunk.DefaultOptions()),
+		ingest.NewMemoryDedupCache(),
+		&mockFetcher{files: files},
+		zap.NewNop(),
+	)
+
+	payloadBytes, err := json.Marshal(queue.RepoSyncPayload{
+		JobID:     jobID,
+		ProjectID: projectID,
+		SourceID:  sourceID,
+	})
+	require.NoError(t, err)
+
+	task := asynq.NewTask(queue.TypeRepoSync, payloadBytes)
+	err = pipeline.ProcessSyncTask(ctx, task)
+	require.NoError(t, err)
+
+	count, err := vectorRepo.CountChunksByProjectID(ctx, projectID)
+	require.NoError(t, err)
+	assert.Equal(t, int64(0), count, "empty and binary files should not be indexed")
+}
+
+func TestIngestionPipeline_NilDedupCacheDefaults(t *testing.T) {
+	pipeline := worker.NewIngestionPipeline(
+		nil, nil, nil, nil, nil, nil, nil, zap.NewNop(),
+	)
+	assert.NotNil(t, pipeline)
+}

@@ -92,3 +92,69 @@ func TestEstimateTokens(t *testing.T) {
 	assert.Equal(t, 0, chunk.EstimateTokens(""))
 	assert.Greater(t, chunk.EstimateTokens("func main() { fmt.Println(\"Hello\") }"), 5)
 }
+
+func TestChunker_LongLinesExceeding64KB(t *testing.T) {
+	// A line of 100KB exceeds bufio.MaxScanTokenSize (64KB)
+	longLine := strings.Repeat("x", 100*1024)
+	content := "line 1\n" + longLine + "\nline 3"
+
+	chunker := chunk.NewChunker(chunk.DefaultOptions())
+	chunks := chunker.ChunkText(content, "json")
+	require.NotEmpty(t, chunks)
+
+	// All 3 lines must be covered
+	assert.Equal(t, 1, chunks[0].StartLine)
+	assert.Equal(t, 3, chunks[len(chunks)-1].EndLine)
+}
+
+func TestChunker_UnicodeAndMultibyteAnchors(t *testing.T) {
+	content := "line 1: 日本語\nline 2: 🚀 emoji and \U0001F600 smiley\nline 3: Cyrillic привет\nline 4: standard ascii"
+	chunker := chunk.NewChunker(chunk.ChunkerOptions{
+		TargetTokens:  10,
+		OverlapTokens: 2,
+		MaxLines:      2,
+	})
+
+	chunks := chunker.ChunkText(content, "text")
+	require.NotEmpty(t, chunks)
+
+	assert.Equal(t, 1, chunks[0].StartLine)
+	assert.Equal(t, 4, chunks[len(chunks)-1].EndLine)
+
+	for _, c := range chunks {
+		assert.GreaterOrEqual(t, c.StartLine, 1)
+		assert.LessOrEqual(t, c.EndLine, 4)
+		assert.True(t, c.StartLine <= c.EndLine)
+		assert.NotEmpty(t, c.Content)
+		assert.NotEmpty(t, c.ContentHash)
+	}
+}
+
+func TestChunker_OversizedTokenBreakRule(t *testing.T) {
+	// 4 lines of 400 words each (~500 tokens per line)
+	line := strings.Repeat("tokenWord ", 400)
+	content := line + "\n" + line + "\n" + line + "\n" + line
+
+	chunker := chunk.NewChunker(chunk.ChunkerOptions{
+		TargetTokens:  300,
+		OverlapTokens: 20,
+		MaxLines:      100,
+	})
+
+	chunks := chunker.ChunkText(content, "text")
+	require.NotEmpty(t, chunks)
+	// Because each line exceeds TargetTokens*2, chunker should break without waiting for 5 lines
+	assert.Greater(t, len(chunks), 1, "should have broken into multiple chunks despite <5 lines")
+}
+
+func TestChunker_ConsecutiveEmptyLines(t *testing.T) {
+	content := "line 1\n\n\n\nline 5\n\nline 7"
+	chunker := chunk.NewChunker(chunk.DefaultOptions())
+
+	chunks := chunker.ChunkText(content, "text")
+	require.NotEmpty(t, chunks)
+
+	assert.Equal(t, 1, chunks[0].StartLine)
+	assert.Equal(t, 7, chunks[len(chunks)-1].EndLine)
+}
+

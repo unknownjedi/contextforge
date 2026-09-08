@@ -179,6 +179,9 @@ func (p *CLIBridgeProvider) GenerateCompletion(ctx context.Context, req *model.C
 		if execCtx.Err() == context.DeadlineExceeded {
 			return nil, fmt.Errorf("CLI binary %q timed out after %v: %w", p.binaryPath, p.timeout, execCtx.Err())
 		}
+		if execCtx.Err() == context.Canceled {
+			return nil, fmt.Errorf("CLI binary %q canceled: %w", p.binaryPath, execCtx.Err())
+		}
 		if exitErr, ok := runErr.(*exec.ExitError); ok {
 			errMsg := strings.TrimSpace(stderr.String())
 			if errMsg == "" {
@@ -216,6 +219,14 @@ func (p *CLIBridgeProvider) StreamCompletion(ctx context.Context, req *model.Com
 		return nil, fmt.Errorf("failed to start CLI binary %q: %w", p.binaryPath, err)
 	}
 
+	var waited bool
+	defer func() {
+		if cmd.Process != nil && !waited {
+			_ = killProcessGroup(cmd)
+			_ = cmd.Wait()
+		}
+	}()
+
 	var fullContent strings.Builder
 	buf := make([]byte, 512)
 
@@ -230,7 +241,9 @@ func (p *CLIBridgeProvider) StreamCompletion(ctx context.Context, req *model.Com
 					Delta: chunkStr,
 					Done:  false,
 				}); err != nil {
+					waited = true
 					_ = killProcessGroup(cmd)
+					_ = cmd.Wait()
 					return nil, err
 				}
 			}
@@ -240,17 +253,23 @@ func (p *CLIBridgeProvider) StreamCompletion(ctx context.Context, req *model.Com
 			if readErr == io.EOF {
 				break
 			}
+			waited = true
 			_ = killProcessGroup(cmd)
+			_ = cmd.Wait()
 			return nil, fmt.Errorf("error reading stdout from %q: %w", p.binaryPath, readErr)
 		}
 	}
 
+	waited = true
 	waitErr := cmd.Wait()
 	durationMs := time.Since(startTime).Milliseconds()
 
 	if waitErr != nil {
 		if execCtx.Err() == context.DeadlineExceeded {
 			return nil, fmt.Errorf("CLI binary %q timed out after %v: %w", p.binaryPath, p.timeout, execCtx.Err())
+		}
+		if execCtx.Err() == context.Canceled {
+			return nil, fmt.Errorf("CLI binary %q canceled: %w", p.binaryPath, execCtx.Err())
 		}
 		if exitErr, ok := waitErr.(*exec.ExitError); ok {
 			errMsg := strings.TrimSpace(stderr.String())

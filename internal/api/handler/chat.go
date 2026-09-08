@@ -126,9 +126,15 @@ func (h *ChatHandler) StreamChatCompletions(c *gin.Context) {
 		return
 	}
 
+	var tokensUsed int
+	var durationMs int64
+	if resp != nil {
+		tokensUsed = resp.TokensUsed
+		durationMs = resp.DurationMs
+	}
 	doneData, err := json.Marshal(model.ChatStreamDoneEvent{
-		TotalTokens: resp.TokensUsed,
-		DurationMs:  resp.DurationMs,
+		TotalTokens: tokensUsed,
+		DurationMs:  durationMs,
 	})
 	if err == nil {
 		_, _ = fmt.Fprintf(c.Writer, "event: done\ndata: %s\n\n", doneData)

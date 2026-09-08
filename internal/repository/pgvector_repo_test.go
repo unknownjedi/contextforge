@@ -67,4 +67,11 @@ func TestPgVectorRepository_ValidationErrors(t *testing.T) {
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "query embedding cannot be empty")
 	})
+
+	t.Run("Upsert Empty Chunks Slice No-op", func(t *testing.T) {
+		err := repo.UpsertChunks(ctx, nil)
+		assert.NoError(t, err)
+		err = repo.UpsertChunks(ctx, []*model.DocumentChunk{})
+		assert.NoError(t, err)
+	})
 }

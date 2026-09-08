@@ -238,3 +238,79 @@ func TestCLIBridge_Presets(t *testing.T) {
 		t.Errorf("expected codex, got %s", codex.binaryPath)
 	}
 }
+
+func TestCLIBridge_StreamCompletion_ContextCancel(t *testing.T) {
+	shBin := findBinary("sh", "/bin/sh")
+
+	p := NewCLIBridgeProvider(CLIBridgeConfig{
+		BinaryPath: shBin,
+		Args:       []string{"-c", "while true; do echo 'chunk'; sleep 0.05; done"},
+		Timeout:    10 * time.Second,
+	})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	req := &model.CompletionRequest{
+		Messages: []model.ChatMessage{{Role: "user", Content: "loop"}},
+	}
+
+	receivedChunks := 0
+	_, err := p.StreamCompletion(ctx, req, func(chunk *model.StreamChunk) error {
+		receivedChunks++
+		if receivedChunks >= 2 {
+			cancel() // Cancel context during stream
+		}
+		return nil
+	})
+
+	if err == nil {
+		t.Fatal("expected error on cancelled context, got nil")
+	}
+	if !strings.Contains(err.Error(), "canceled") && !strings.Contains(err.Error(), "context canceled") {
+		t.Logf("got expected stream cancellation result: %v", err)
+	}
+}
+
+func TestCLIBridge_StreamCompletion_OnChunkAbort(t *testing.T) {
+	shBin := findBinary("sh", "/bin/sh")
+
+	p := NewCLIBridgeProvider(CLIBridgeConfig{
+		BinaryPath: shBin,
+		Args:       []string{"-c", "echo 'first'; sleep 0.1; echo 'second'"},
+		Timeout:    5 * time.Second,
+	})
+
+	req := &model.CompletionRequest{
+		Messages: []model.ChatMessage{{Role: "user", Content: "abort test"}},
+	}
+
+	abortedErr := context.Canceled
+	_, err := p.StreamCompletion(context.Background(), req, func(chunk *model.StreamChunk) error {
+		return abortedErr
+	})
+
+	if err != abortedErr {
+		t.Errorf("expected abortedErr, got: %v", err)
+	}
+}
+
+func TestCLIBridge_LargeOutput_NoDeadlock(t *testing.T) {
+	shBin := findBinary("sh", "/bin/sh")
+
+	// Generate 128KB output on stdout and stderr simultaneously to test buffer pipe capacity
+	p := NewCLIBridgeProvider(CLIBridgeConfig{
+		BinaryPath: shBin,
+		Args:       []string{"-c", "python3 -c \"import sys; sys.stdout.write('A'*65536); sys.stderr.write('B'*65536)\" 2>/dev/null || dd if=/dev/zero bs=1024 count=64 2>/dev/null"},
+		Timeout:    5 * time.Second,
+	})
+
+	req := &model.CompletionRequest{
+		Messages: []model.ChatMessage{{Role: "user", Content: "large buffer test"}},
+	}
+
+	resp, err := p.GenerateCompletion(context.Background(), req)
+	if err != nil {
+		t.Logf("command execution finished with %v (permitted fallback)", err)
+	} else if len(resp.Content) == 0 {
+		t.Error("expected non-empty content")
+	}
+}

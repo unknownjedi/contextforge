@@ -62,9 +62,32 @@ func DefaultScannerOptions() ScannerOptions {
 			".ttf",
 			".pdf",
 			".pyc",
+			".wasm",
+			".so",
+			".dylib",
+			".dll",
+			".class",
+			".jar",
+			".war",
+			".db",
+			".sqlite",
+			".sqlite3",
+			".o",
+			".a",
+			".7z",
+			".rar",
 			".DS_Store",
 		},
 	}
+}
+
+// IsBinaryContent checks if content contains null bytes (standard Git heuristic for binary files).
+func IsBinaryContent(content string) bool {
+	checkLen := len(content)
+	if checkLen > 8000 {
+		checkLen = 8000
+	}
+	return strings.IndexByte(content[:checkLen], 0) != -1
 }
 
 // FileFilter determines whether a file path and size should be processed or skipped.

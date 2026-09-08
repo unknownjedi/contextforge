@@ -69,13 +69,15 @@ func FilterDuplicateChunks(ctx context.Context, cache DedupCache, projectID uuid
 	res := &DedupResult{}
 
 	for _, chunk := range chunks {
-		if emb, found := cache.GetEmbedding(ctx, projectID, chunk.ContentHash); found {
-			chunk.Embedding = emb
-			res.CachedChunks = append(res.CachedChunks, chunk)
-			res.EmbeddingsSaved++
-		} else {
-			res.ChunksToEmbed = append(res.ChunksToEmbed, chunk)
+		if cache != nil {
+			if emb, found := cache.GetEmbedding(ctx, projectID, chunk.ContentHash); found {
+				chunk.Embedding = emb
+				res.CachedChunks = append(res.CachedChunks, chunk)
+				res.EmbeddingsSaved++
+				continue
+			}
 		}
+		res.ChunksToEmbed = append(res.ChunksToEmbed, chunk)
 	}
 
 	return res

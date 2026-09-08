@@ -74,6 +74,15 @@ func (r *PgVectorRepository) UpsertChunks(ctx context.Context, chunks []*model.D
 		if c.ID == uuid.Nil {
 			c.ID = uuid.New()
 		}
+		if c.ProjectID == uuid.Nil {
+			return fmt.Errorf("cannot upsert chunk index %d with nil project ID", c.ChunkIndex)
+		}
+		if c.DocumentID == uuid.Nil {
+			return fmt.Errorf("cannot upsert chunk index %d with nil document ID", c.ChunkIndex)
+		}
+		if len(c.Embedding) == 0 {
+			return fmt.Errorf("cannot upsert chunk index %d for doc %s with empty embedding", c.ChunkIndex, c.DocumentID)
+		}
 		vecStr := FormatVector(c.Embedding)
 		_, err := stmt.ExecContext(ctx,
 			c.ID,
@@ -186,6 +195,10 @@ func (r *PgVectorRepository) SearchSimilar(ctx context.Context, params model.Vec
 			FilePath:   filePath,
 			Language:   language,
 		})
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterating chunk rows: %w", err)
 	}
 
 	return matches, nil
