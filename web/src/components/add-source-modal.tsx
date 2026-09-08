@@ -23,7 +23,7 @@ export function AddSourceModal({
   const [repoOwner, setRepoOwner] = useState("");
   const [repoName, setRepoName] = useState("");
   const [branch, setBranch] = useState("main");
-  const [authMethod, setAuthMethod] = useState<AuthMethod>("oauth");
+  const [authMethod, setAuthMethod] = useState<AuthMethod>("public");
   const [patToken, setPatToken] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -75,7 +75,7 @@ export function AddSourceModal({
     }
 
     if (authMethod === "pat" && !patToken.trim()) {
-      setError("Please enter a GitHub Personal Access Token (PAT) for PAT authentication.");
+      setError("Please enter a GitHub Personal Access Token (PAT).");
       return;
     }
 
@@ -306,37 +306,77 @@ export function AddSourceModal({
             {/* Authentication Method */}
             <div>
               <label className="block text-xs font-medium text-zinc-300 mb-1.5">
-                Authentication Method
+                Access Type
               </label>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-2">
+                {/* Public */}
+                <button
+                  type="button"
+                  onClick={() => setAuthMethod("public")}
+                  className={`flex flex-col items-center gap-1.5 p-2.5 rounded-lg border text-xs font-medium transition-all ${
+                    authMethod === "public"
+                      ? "border-emerald-500 bg-emerald-600/15 text-emerald-300"
+                      : "border-zinc-800 bg-zinc-900/60 text-zinc-400 hover:border-zinc-700"
+                  }`}
+                >
+                  <Globe className="h-4 w-4" />
+                  <span>Public</span>
+                  <span className="text-[9px] font-normal opacity-70 leading-tight text-center">
+                    No auth needed
+                  </span>
+                </button>
+
+                {/* GitHub App / OAuth */}
                 <button
                   type="button"
                   onClick={() => setAuthMethod("oauth")}
-                  className={`flex items-center justify-center gap-2 p-2.5 rounded-lg border text-xs font-medium transition-all ${
+                  className={`flex flex-col items-center gap-1.5 p-2.5 rounded-lg border text-xs font-medium transition-all ${
                     authMethod === "oauth"
                       ? "border-blue-500 bg-blue-600/15 text-blue-300"
                       : "border-zinc-800 bg-zinc-900/60 text-zinc-400 hover:border-zinc-700"
                   }`}
                 >
                   <ShieldCheck className="h-4 w-4" />
-                  GitHub App OAuth
+                  <span>GitHub App</span>
+                  <span className="text-[9px] font-normal opacity-70 leading-tight text-center">
+                    OAuth / App install
+                  </span>
                 </button>
+
+                {/* PAT */}
                 <button
                   type="button"
                   onClick={() => setAuthMethod("pat")}
-                  className={`flex items-center justify-center gap-2 p-2.5 rounded-lg border text-xs font-medium transition-all ${
+                  className={`flex flex-col items-center gap-1.5 p-2.5 rounded-lg border text-xs font-medium transition-all ${
                     authMethod === "pat"
-                      ? "border-blue-500 bg-blue-600/15 text-blue-300"
+                      ? "border-amber-500 bg-amber-600/15 text-amber-300"
                       : "border-zinc-800 bg-zinc-900/60 text-zinc-400 hover:border-zinc-700"
                   }`}
                 >
                   <Key className="h-4 w-4 text-amber-400" />
-                  Personal Access Token
+                  <span>PAT</span>
+                  <span className="text-[9px] font-normal opacity-70 leading-tight text-center">
+                    Personal token
+                  </span>
                 </button>
               </div>
+
+              {/* Public info banner */}
+              {authMethod === "public" && (
+                <p className="mt-2 text-[10px] text-emerald-400/80 flex items-center gap-1">
+                  <Globe className="w-3 h-3 shrink-0" />
+                  Public repositories are cloned without any credentials. Use PAT or GitHub App for private repos.
+                </p>
+              )}
+              {authMethod === "oauth" && (
+                <p className="mt-2 text-[10px] text-blue-400/80 flex items-center gap-1">
+                  <ShieldCheck className="w-3 h-3 shrink-0" />
+                  Requires a GitHub App / OAuth installation configured server-side.
+                </p>
+              )}
             </div>
 
-            {/* PAT Input Field if authMethod === 'pat' */}
+            {/* PAT Input Field */}
             {authMethod === "pat" && (
               <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-150">
                 <div className="flex items-center justify-between">

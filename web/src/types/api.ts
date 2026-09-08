@@ -79,7 +79,7 @@ export interface Source {
   created_at?: string;
 }
 
-export type AuthMethod = "oauth" | "pat";
+export type AuthMethod = "public" | "oauth" | "pat";
 
 export interface CreateSourceRequest {
   name?: string;
