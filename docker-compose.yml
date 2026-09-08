@@ -1,0 +1,111 @@
+version: "3.8"
+
+services:
+  # ----------------------------------------------------------------------------
+  # PostgreSQL 16 with pgvector extension enabled
+  # ----------------------------------------------------------------------------
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: contextforge-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: contextforge
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-pgvector.sql:/docker-entrypoint-initdb.d/01-init-pgvector.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d contextforge"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ----------------------------------------------------------------------------
+  # Redis 7 for Asynq job queue and distributed locks
+  # ----------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: contextforge-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ----------------------------------------------------------------------------
+  # Go REST API Server (Used in Full Container Stack profile)
+  # ----------------------------------------------------------------------------
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: contextforge-api
+    environment:
+      - APP_ENV=development
+      - PORT=8080
+      - DATABASE_URL=postgres://postgres:postgrespassword@postgres:5432/contextforge?sslmode=disable
+      - REDIS_URL=redis://redis:6379/0
+      - APP_BASE_URL=http://localhost:3000
+      - API_BASE_URL=http://localhost:8080
+    env_file:
+      - .env
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    profiles: ["full", "default"]
+
+  # ----------------------------------------------------------------------------
+  # Background Ingestion Worker (Used in Full Container Stack profile)
+  # ----------------------------------------------------------------------------
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: contextforge-worker
+    environment:
+      - APP_ENV=development
+      - DATABASE_URL=postgres://postgres:postgrespassword@postgres:5432/contextforge?sslmode=disable
+      - REDIS_URL=redis://redis:6379/0
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    profiles: ["full", "default"]
+
+  # ----------------------------------------------------------------------------
+  # Next.js Web Frontend (Used in Full Container Stack profile)
+  # ----------------------------------------------------------------------------
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    container_name: contextforge-web
+    environment:
+      - NEXT_PUBLIC_API_BASE_URL=http://localhost:8080
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    restart: unless-stopped
+    profiles: ["full", "default"]
+
+volumes:
+  postgres_data:
+  redis_data:
