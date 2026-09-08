@@ -29,6 +29,7 @@ import {
   ChevronUp,
   Server,
   Table,
+  Globe,
 } from "lucide-react";
 import type {
   Project,
@@ -91,7 +92,7 @@ export default function ProjectDetailPage() {
   // Inline Add Repository Form State
   const [inlineRepoUrl, setInlineRepoUrl] = useState("");
   const [inlineBranch, setInlineBranch] = useState("main");
-  const [inlineAuthMethod, setInlineAuthMethod] = useState<AuthMethod>("oauth");
+  const [inlineAuthMethod, setInlineAuthMethod] = useState<AuthMethod>("public");
   const [inlinePatToken, setInlinePatToken] = useState("");
   const [inlineSubmitting, setInlineSubmitting] = useState(false);
   const [inlineFormError, setInlineFormError] = useState<string | null>(null);
@@ -669,41 +670,68 @@ func ExecuteContextQuery(ctx context.Context) error {
                 {/* Auth Method Toggle */}
                 <div>
                   <label className="block text-xs font-medium text-zinc-300 mb-1.5">
-                    Authentication Method
+                    Access Type
                   </label>
-                  <div className="grid grid-cols-2 gap-3 max-w-md">
+                  <div className="grid grid-cols-3 gap-2 max-w-md">
+                    {/* Public */}
+                    <button
+                      type="button"
+                      onClick={() => setInlineAuthMethod("public")}
+                      className={`flex flex-col items-center gap-1.5 p-2.5 rounded-lg border text-xs font-medium transition-all ${
+                        inlineAuthMethod === "public"
+                          ? "bg-emerald-950/60 border-emerald-600 text-emerald-300"
+                          : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:border-zinc-700"
+                      }`}
+                    >
+                      <Globe className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <div className="font-semibold text-zinc-200">Public</div>
+                      <div className="text-[10px] text-zinc-500">No auth needed</div>
+                    </button>
+
+                    {/* GitHub OAuth */}
                     <button
                       type="button"
                       onClick={() => setInlineAuthMethod("oauth")}
-                      className={`flex items-center gap-2 p-2.5 rounded-lg border text-xs text-left transition-all ${
+                      className={`flex flex-col items-center gap-1.5 p-2.5 rounded-lg border text-xs font-medium transition-all ${
                         inlineAuthMethod === "oauth"
                           ? "bg-blue-950/60 border-blue-600 text-blue-300"
                           : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:border-zinc-700"
                       }`}
                     >
                       <ShieldCheck className="w-4 h-4 text-blue-400 shrink-0" />
-                      <div>
-                        <div className="font-semibold text-zinc-200">GitHub OAuth</div>
-                        <div className="text-[10px] text-zinc-500">App Authorization</div>
-                      </div>
+                      <div className="font-semibold text-zinc-200">GitHub App</div>
+                      <div className="text-[10px] text-zinc-500">OAuth install</div>
                     </button>
 
+                    {/* PAT */}
                     <button
                       type="button"
                       onClick={() => setInlineAuthMethod("pat")}
-                      className={`flex items-center gap-2 p-2.5 rounded-lg border text-xs text-left transition-all ${
+                      className={`flex flex-col items-center gap-1.5 p-2.5 rounded-lg border text-xs font-medium transition-all ${
                         inlineAuthMethod === "pat"
-                          ? "bg-blue-950/60 border-blue-600 text-blue-300"
+                          ? "bg-amber-950/60 border-amber-600 text-amber-300"
                           : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:border-zinc-700"
                       }`}
                     >
                       <Key className="w-4 h-4 text-amber-400 shrink-0" />
-                      <div>
-                        <div className="font-semibold text-zinc-200">Personal Access Token</div>
-                        <div className="text-[10px] text-zinc-500">Local PAT Fallback</div>
-                      </div>
+                      <div className="font-semibold text-zinc-200">PAT</div>
+                      <div className="text-[10px] text-zinc-500">Personal token</div>
                     </button>
                   </div>
+
+                  {/* Contextual hint */}
+                  {inlineAuthMethod === "public" && (
+                    <p className="mt-2 text-[10px] text-emerald-400/80 flex items-center gap-1">
+                      <Globe className="w-3 h-3 shrink-0" />
+                      Public repos are cloned without credentials. Use PAT or GitHub App for private repos.
+                    </p>
+                  )}
+                  {inlineAuthMethod === "oauth" && (
+                    <p className="mt-2 text-[10px] text-blue-400/80 flex items-center gap-1">
+                      <ShieldCheck className="w-3 h-3 shrink-0" />
+                      Requires a GitHub App / OAuth installation configured server-side.
+                    </p>
+                  )}
                 </div>
 
                 {/* PAT input if PAT chosen */}
@@ -758,7 +786,7 @@ func ExecuteContextQuery(ctx context.Context) error {
                 Connect a GitHub repository to begin AST chunking and vector indexing.
               </p>
               <button
-                onClick={() => setShowInlineAddSource(true)}
+                onClick={() => setIsAddSourceModalOpen(true)}
                 className="mt-4 inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors"
               >
                 <Plus className="w-3.5 h-3.5" />
