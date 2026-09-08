@@ -13,6 +13,7 @@
 
 ## 2. Ingestion Data Flow
 
+### 2.1 GitHub Repository Ingestion Flow
 1. User requests adding a source (e.g. GitHub repo `owner/repo`) to `Project A`.
 2. API handler validates input, verifies user owns `Project A`, and creates a `ProjectSource` record.
 3. API enqueues an ingestion task onto Redis (`queue:default`) and responds `202 Accepted` with `job_id`.
@@ -25,6 +26,19 @@
    - Invokes `Embedder.Embed(ctx, batch)`.
    - In an atomic transaction: stores document metadata via Ent and inserts chunks via `VectorRepository.UpsertChunks(ctx, chunks)`.
    - Releases lock and updates job status to `completed`.
+
+### 2.2 External Relational Database Ingestion Flow
+1. User tests and adds an external database source (PostgreSQL, CockroachDB, MySQL, MariaDB, SQLite, SQL Server) via `POST /api/v1/projects/:id/sources/database`.
+2. API validates the connection string, enforces SSRF network target validation, tests connectivity, encrypts credentials via AES-256-GCM, and creates `Source` and `DatabaseSource` records.
+3. API enqueues an asynchronous sync task onto Redis (`queue:database:sync`, task `database:sync`) and responds `201 Created`.
+4. Worker picks up the database sync job:
+   - Decrypts connection credentials and connects to the target external database.
+   - Introspects catalog metadata: schemas, tables, views, columns, nullability, defaults, primary keys, foreign keys, and indexes.
+   - If configured in `schema_and_data` mode: executes sensitive column tokenization (filtering out passwords, secrets, tokens, PII), and extracts bounded sample row batches.
+   - Passes catalog metadata to `KnowledgeNormalizer`, generating deterministic SQL DDL and Markdown row documents with line-anchored syntax (`schema/{schema}/{table}.sql`).
+   - Computes SHA-256 content hashes to identify schema/data modifications.
+   - Chunks normalized SQL documents with line anchors, embeds chunks via `Embedder.EmbedDocuments`, purges obsolete chunks for existing modified tables, and atomically upserts vector chunks via `VectorRepository.UpsertChunks`.
+   - Updates source sync status to `synced` and database source status to `ready`.
 
 ## 3. Query & RAG Retrieval Flow
 

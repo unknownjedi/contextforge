@@ -4,9 +4,9 @@ ContextForge implements a project-isolated, explainable RAG pipeline designed sp
 
 ## Core Principles
 
-1. **Source Independence**: Raw data from GitHub (code, PRs, issues), URLs, and uploaded files is converted into a standardized `Document` model before chunking.
-2. **Deterministic Chunking**: Code and markdown are chunked respecting structural boundaries (functions, classes, markdown headings) rather than arbitrary byte boundaries.
-3. **Structured Attribution**: The generative LLM is constrained to produce structured citations that directly map to specific line ranges and commit SHAs.
+1. **Source Independence**: Raw data from GitHub repositories (code, PRs, issues), external relational databases (Postgres, MySQL, MariaDB, CockroachDB, SQLite, SQL Server schemas & rows), URLs, and uploaded files are converted into standardized `Document` models before chunking.
+2. **Deterministic & Semantic Chunking**: Code and markdown are chunked respecting structural boundaries (functions, classes, SQL DDL statements, markdown headings) rather than arbitrary byte boundaries.
+3. **Structured Attribution**: The generative LLM is constrained to produce structured citations that directly map to specific line ranges, commit SHAs, or database table schema DDL definitions.
 
 ## Pipeline Sequence
 

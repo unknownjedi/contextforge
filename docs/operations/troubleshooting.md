@@ -113,3 +113,27 @@ docker compose exec redis redis-cli keys "asynq:*"
 | `6379` | Redis | `lsof -i :6379` (Stop local redis server or re-map port) |
 | `8080` | Go API | `lsof -i :8080` (Kill colliding process or set `CF_SERVER_PORT=8081`) |
 | `3000` | Next.js Frontend | `lsof -i :3000` (Set `PORT=3001 pnpm dev`) |
+
+---
+
+### 2.6 External Database Knowledge Sources
+
+#### Issue: `SSRF validation failed: host resolves to private/prohibited IP`
+- **Cause**: By default, ContextForge blocks connections to localhost (`127.0.0.1`), internal private networks (`10.0.0.0/8`, `192.168.0.0/16`, `172.16.0.0/12`), and cloud metadata IP (`169.254.169.254`).
+- **Resolution**: In local development environments when testing against local databases on your machine or Docker network, set `ALLOW_PRIVATE_IPS=true` in your `.env` file and restart the API server. In production, this must remain `false`.
+
+#### Issue: `unsupported database type: X`
+- **Cause**: The submitted `database_type` or URL scheme is not supported.
+- **Resolution**: Supported database engines are: `postgres`, `cockroachdb`, `mysql`, `mariadb`, `sqlite`, and `sqlserver` (MSSQL). Ensure your URL starts with the appropriate scheme (e.g. `postgresql://`, `mysql://`, `sqlite://`, or `sqlserver://`).
+
+#### Issue: `sqlite connection rejected: file path in restricted system directory`
+- **Cause**: The SQLite file path is pointing to or within a restricted directory such as `/root`, `/.ssh`, `/.env`, `/.git`, or `/var/run/secrets`.
+- **Resolution**: Move the SQLite database file to an authorized project or data directory (e.g. `./data/mydb.sqlite` or `/tmp/mydb.sqlite`).
+
+#### Issue: `database connection failed: SSL / TLS certificate verification failed`
+- **Cause**: Connecting to remote managed database services (e.g. AWS RDS, Azure Database, Supabase) with self-signed certificates or required SSL modes.
+- **Resolution**:
+  - PostgreSQL: Append `?sslmode=require` or `?sslmode=verify-full`.
+  - MySQL: Append `?tls=skip-verify` or `?tls=custom`.
+  - SQL Server: Append `?encrypt=true&trustServerCertificate=true`.
+

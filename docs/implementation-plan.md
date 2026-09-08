@@ -17,6 +17,8 @@ All tasks are strictly sequential by milestone, track dependencies, specify exac
 | **M6** | RAG Engine, Retrieval & Chat Streaming | CF-027 – CF-030 | **DONE** (4/4) |
 | **M7** | Web Frontend & Developer UI | CF-031 – CF-034 | **DONE** (4/4) |
 | **M8** | Security Hardening, E2E & Production Readiness | CF-035 – CF-038 | **DONE** (4/4) |
+| **M9** | External Relational Database Knowledge Sources | CF-039 – CF-044 | **DONE** (6/6) |
+
 
 ---
 
@@ -733,3 +735,88 @@ All tasks are strictly sequential by milestone, track dependencies, specify exac
   make security && docker build -t contextforge-api:test -f Dockerfile.api .
   ```
 - **Status**: `DONE`
+
+---
+
+## Milestone 9: External Relational Database Knowledge Sources
+
+### `CF-039`: Database Migration & Ent Schema for Multi-Source
+- **Milestone**: M9
+- **Dependencies**: CF-005, CF-006
+- **Impacted Files**:
+  - `migrations/000003_add_database_sources.up.sql`
+  - `migrations/000003_add_database_sources.down.sql`
+  - `internal/ent/schema/source.go`
+  - `internal/ent/schema/database_source.go`
+  - `internal/ent/schema/project.go`
+- **Description**: Relax GitHub-only columns (`repo_owner`, `repo_name`) on `sources`, create `database_sources` table referencing `sources(id)` and `projects(id)`, with AES-256-GCM encrypted connection strings.
+- **Status**: `DONE`
+
+---
+
+### `CF-040`: Pure Go Database Connector Framework & SSRF Guard
+- **Milestone**: M9
+- **Dependencies**: CF-039
+- **Impacted Files**:
+  - `internal/connector/model.go`
+  - `internal/connector/registry.go`
+  - `internal/connector/ssrf.go`
+  - `internal/connector/sensitive.go`
+  - `internal/connector/postgres.go`
+  - `internal/connector/mysql.go`
+  - `internal/connector/sqlite.go`
+  - `internal/connector/mssql.go`
+- **Description**: Pure Go connectors (zero CGO) for PostgreSQL, CockroachDB, MySQL, MariaDB, SQLite, and SQL Server. SSRF target filtering with IPv6/CGNAT normalization, DNS pre-checks, and sensitive column tokenization.
+- **Status**: `DONE`
+
+---
+
+### `CF-041`: Knowledge Normalizer (DDL & Sample Row Documents)
+- **Milestone**: M9
+- **Dependencies**: CF-040
+- **Impacted Files**:
+  - `internal/service/knowledge_normalizer.go`
+  - `internal/service/knowledge_normalizer_test.go`
+- **Description**: Generates deterministic Markdown table DDL documents with line anchors (`schema/{schema}/{table}.sql`) and sample row batch tables (`data/{schema}/{table}.sql`) with SHA-256 content hashes.
+- **Status**: `DONE`
+
+---
+
+### `CF-042`: Database Ingestion Worker Pipeline & Vector Purge
+- **Milestone**: M9
+- **Dependencies**: CF-041, CF-021
+- **Impacted Files**:
+  - `internal/worker/database_ingest_handler.go`
+  - `internal/worker/database_ingest_handler_test.go`
+  - `internal/queue/tasks.go`
+  - `cmd/worker/main.go`
+- **Description**: Asynchronous Redis Asynq task handler `database:sync`. Executes schema introspection, document normalization, chunking, embedding, obsolete vector chunk purging, and atomic upserts.
+- **Status**: `DONE`
+
+---
+
+### `CF-043`: REST API Endpoints & Multi-Tenant Isolation
+- **Milestone**: M9
+- **Dependencies**: CF-042, CF-008
+- **Impacted Files**:
+  - `internal/service/database_source_service.go`
+  - `internal/api/handler/database_source.go`
+  - `internal/api/handler/database_source_test.go`
+  - `internal/api/server.go`
+  - `docs/api/openapi.yaml`
+- **Description**: 10 REST endpoints under `/api/v1/projects/:id/sources/database` covering live ping test, creation, masked listings, updates, deletion, catalog metadata inspection, and sync triggers. Scoped strictly by `project_id`.
+- **Status**: `DONE`
+
+---
+
+### `CF-044`: Next.js Web UI Integration (Add Modal & Source Manager)
+- **Milestone**: M9
+- **Dependencies**: CF-043, CF-033
+- **Impacted Files**:
+  - `web/src/components/add-database-source-modal.tsx`
+  - `web/src/app/projects/[id]/page.tsx`
+  - `web/src/lib/api.ts`
+  - `web/src/types/api.ts`
+- **Description**: Multi-step modal for adding database sources with live connection test, engine selection, sensitive column warnings, and project overview database source list with sync triggers and spinners.
+- **Status**: `DONE`
+

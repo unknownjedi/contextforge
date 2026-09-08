@@ -41,3 +41,19 @@ To maintain sub-500ms retrieval latencies across growing knowledge bases:
 - If retrieved chunks have similarity below `0.5`, the system emits a low-confidence notice:
   `"I cannot find sufficient evidence in the indexed project sources to answer this question accurately."`
 - The model is strictly forbidden from fabricating facts or citations not grounded in the retrieved chunks.
+
+## 4. Hybrid Retrieval & Reciprocal Rank Fusion (RRF)
+
+To maximize precision across both natural language queries and exact identifiers (such as column names, foreign key references, or function signatures), ContextForge employs Reciprocal Rank Fusion ($k=60$):
+
+$$\text{RRF Score}(d) = \sum_{m \in M} \frac{1}{k + r_m(d)}$$
+
+where $M = \{\text{dense vector search}, \text{lexical keyword search}\}$ and $r_m(d)$ is the rank of document chunk $d$ in system $m$.
+
+## 5. Line-Anchored Citation Format
+
+Retrieved citations carry precise 1-indexed line anchors for both code files and normalized database DDL documents:
+- **Code Citations**: `src/services/auth.ts#L42-L68`
+- **Database Schema Citations**: `schema/public/orders.sql#L12-L28` (referencing exact column constraints, foreign keys, or indexes)
+- **Database Sample Row Citations**: `data/public/products.sql#L1-L15` (referencing bounded table sample rows)
+
