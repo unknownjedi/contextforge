@@ -147,6 +147,10 @@ func (s *Server) MountRoutes(h Handlers, projectRepo repository.ProjectRepositor
 		authed.GET("/auth/me", h.Auth.GetMe)
 	}
 
+	if h.Job != nil {
+		authed.GET("/jobs/:job_id", h.Job.GetJobByID)
+	}
+
 	if h.Project != nil {
 		authed.GET("/projects", h.Project.ListProjects)
 		authed.POST("/projects", h.Project.CreateProject)
@@ -158,6 +162,7 @@ func (s *Server) MountRoutes(h Handlers, projectRepo repository.ProjectRepositor
 		{
 			projectGroup.GET("", h.Project.GetProject)
 			projectGroup.PATCH("", h.Project.UpdateProject)
+			projectGroup.PUT("", h.Project.UpdateProject)
 			projectGroup.DELETE("", h.Project.DeleteProject)
 
 			if h.Source != nil {

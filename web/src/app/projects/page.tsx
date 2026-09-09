@@ -63,63 +63,10 @@ export default function ProjectsPage() {
     } catch (err: any) {
       if (err instanceof ApiError && err.status === 401) {
         setError("Authentication required to view projects. Please configure GITHUB_PAT or connect via the sidebar.");
+      } else {
+        setError(err.message || "Failed to load projects from backend.");
       }
-      // High-fidelity fallback projects for preview and offline dev
-      const mockProjects: Project[] = [
-        {
-          id: "11111111-1111-1111-1111-111111111111",
-          name: "ContextForge Core Service",
-          description:
-            "High-performance Go RAG API, asynchronous worker ingestion pipeline, and pgvector embeddings.",
-          owner_user_id: "00000000-0000-0000-0000-000000000000",
-          embedding_provider: "ollama",
-          embedding_model: "nomic-embed-text",
-          embedding_dimension: 768,
-          llm_provider: "cli_opencode",
-          total_documents: 142,
-          total_chunks: 1890,
-          total_sources: 2,
-          status: "ready",
-          created_at: new Date(Date.now() - 86400000 * 5).toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-        {
-          id: "22222222-2222-2222-2222-222222222222",
-          name: "ContextForge Web UI",
-          description:
-            "Next.js 14 App Router portal with real-time SSE streaming chat, structured citation drawer, and source manager.",
-          owner_user_id: "00000000-0000-0000-0000-000000000000",
-          embedding_provider: "openai",
-          embedding_model: "text-embedding-3-small",
-          embedding_dimension: 1536,
-          llm_provider: "gpt-4o",
-          total_documents: 48,
-          total_chunks: 520,
-          total_sources: 1,
-          status: "ready",
-          created_at: new Date(Date.now() - 86400000 * 2).toISOString(),
-          updated_at: new Date(Date.now() - 3600000 * 4).toISOString(),
-        },
-        {
-          id: "33333333-3333-3333-3333-333333333333",
-          name: "Autonomous Coding Agent CLI",
-          description:
-            "CLI tool execution runtime with MCP tool servers and AST Tree-Sitter code parsing engine.",
-          owner_user_id: "00000000-0000-0000-0000-000000000000",
-          embedding_provider: "voyage",
-          embedding_model: "voyage-code-2",
-          embedding_dimension: 1536,
-          llm_provider: "claude-3-5-sonnet",
-          total_documents: 96,
-          total_chunks: 1140,
-          total_sources: 3,
-          status: "syncing",
-          created_at: new Date(Date.now() - 86400000 * 10).toISOString(),
-          updated_at: new Date(Date.now() - 600000).toISOString(),
-        },
-      ];
-
-      setProjects(mockProjects);
+      setProjects([]);
       setProjectSources({});
     } finally {
       setLoading(false);

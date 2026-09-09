@@ -46,3 +46,20 @@ func (h *JobHandler) GetJob(c *gin.Context) {
 
 	c.JSON(http.StatusOK, job)
 }
+
+// GetJobByID handles GET /api/v1/jobs/:job_id matching openapi.yaml
+func (h *JobHandler) GetJobByID(c *gin.Context) {
+	jobID, err := uuid.Parse(c.Param("job_id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid job ID"})
+		return
+	}
+
+	job, err := h.jobRepo.GetByIDOnly(c.Request.Context(), jobID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "job not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, job)
+}

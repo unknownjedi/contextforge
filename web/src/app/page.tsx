@@ -52,26 +52,10 @@ export default function DashboardPage() {
         );
       } else {
         setError(
-          "Could not connect to ContextForge backend on localhost:8080. Displaying local workspace state."
+          "Could not connect to ContextForge backend on localhost:8080. Please ensure the backend server is running."
         );
       }
-      // Fallback initial sample project for UI preview
-      setProjects([
-        {
-          id: "11111111-1111-1111-1111-111111111111",
-          name: "ContextForge Core",
-          description: "High-performance RAG and context engine for AI coding agents",
-          owner_user_id: "00000000-0000-0000-0000-000000000000",
-          embedding_provider: "ollama",
-          embedding_model: "nomic-embed-text",
-          embedding_dimension: 768,
-          llm_provider: "cli_opencode",
-          total_documents: 142,
-          total_chunks: 1890,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-      ]);
+      setProjects([]);
     } finally {
       setLoading(false);
     }

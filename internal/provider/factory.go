@@ -65,6 +65,9 @@ func NewFactory() *Factory {
 func (f *Factory) registerDefaults() {
 	// OpenAI LLM
 	f.RegisterLLM(ProviderOpenAI, func(cfg FactoryConfig) (LLMProvider, error) {
+		if strings.TrimSpace(cfg.APIKey) == "" && cfg.HTTPClient == nil && cfg.BaseURL == "" {
+			return nil, fmt.Errorf("API key is required for provider %q", ProviderOpenAI)
+		}
 		return NewOpenAIProvider(OpenAIConfig{
 			APIKey:                cfg.APIKey,
 			BaseURL:               cfg.BaseURL,
@@ -77,6 +80,9 @@ func (f *Factory) registerDefaults() {
 
 	// Anthropic LLM
 	f.RegisterLLM(ProviderAnthropic, func(cfg FactoryConfig) (LLMProvider, error) {
+		if strings.TrimSpace(cfg.APIKey) == "" && cfg.HTTPClient == nil && cfg.BaseURL == "" {
+			return nil, fmt.Errorf("API key is required for provider %q", ProviderAnthropic)
+		}
 		return NewAnthropicProvider(AnthropicConfig{
 			APIKey:       cfg.APIKey,
 			BaseURL:      cfg.BaseURL,
@@ -88,6 +94,9 @@ func (f *Factory) registerDefaults() {
 
 	// Gemini LLM
 	f.RegisterLLM(ProviderGemini, func(cfg FactoryConfig) (LLMProvider, error) {
+		if strings.TrimSpace(cfg.APIKey) == "" && cfg.HTTPClient == nil && cfg.BaseURL == "" {
+			return nil, fmt.Errorf("API key is required for provider %q", ProviderGemini)
+		}
 		return NewGeminiProvider(GeminiConfig{
 			APIKey:                cfg.APIKey,
 			BaseURL:               cfg.BaseURL,
@@ -153,6 +162,9 @@ func (f *Factory) registerDefaults() {
 	// Embedding providers
 	// OpenAI Embedding
 	f.RegisterEmbedding(ProviderOpenAI, func(cfg FactoryConfig) (EmbeddingProvider, error) {
+		if strings.TrimSpace(cfg.APIKey) == "" && cfg.HTTPClient == nil && cfg.BaseURL == "" {
+			return nil, fmt.Errorf("API key is required for provider %q", ProviderOpenAI)
+		}
 		return NewOpenAIEmbeddingProvider(OpenAIConfig{
 			APIKey:                cfg.APIKey,
 			BaseURL:               cfg.BaseURL,
@@ -165,6 +177,9 @@ func (f *Factory) registerDefaults() {
 
 	// Gemini Embedding
 	f.RegisterEmbedding(ProviderGemini, func(cfg FactoryConfig) (EmbeddingProvider, error) {
+		if strings.TrimSpace(cfg.APIKey) == "" && cfg.HTTPClient == nil && cfg.BaseURL == "" {
+			return nil, fmt.Errorf("API key is required for provider %q", ProviderGemini)
+		}
 		return NewGeminiProvider(GeminiConfig{
 			APIKey:                cfg.APIKey,
 			BaseURL:               cfg.BaseURL,

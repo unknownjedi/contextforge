@@ -240,3 +240,50 @@ func (r *PgVectorRepository) CountChunksByProjectID(ctx context.Context, project
 	}
 	return count, nil
 }
+
+// GetChunksByDocumentID returns all chunks for a specific document within a project.
+func (r *PgVectorRepository) GetChunksByDocumentID(ctx context.Context, projectID, documentID uuid.UUID) ([]*model.DocumentChunk, error) {
+	if projectID == uuid.Nil {
+		return nil, fmt.Errorf("project ID is required")
+	}
+	if documentID == uuid.Nil {
+		return nil, fmt.Errorf("document ID is required")
+	}
+
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT id, project_id, document_id, chunk_index, start_line, end_line,
+		       content, content_hash, token_count, created_at
+		FROM document_chunks
+		WHERE project_id = $1 AND document_id = $2
+		ORDER BY chunk_index ASC
+	`, projectID, documentID)
+	if err != nil {
+		return nil, fmt.Errorf("querying document chunks: %w", err)
+	}
+	defer rows.Close()
+
+	var chunks []*model.DocumentChunk
+	for rows.Next() {
+		c := &model.DocumentChunk{}
+		if err := rows.Scan(
+			&c.ID,
+			&c.ProjectID,
+			&c.DocumentID,
+			&c.ChunkIndex,
+			&c.StartLine,
+			&c.EndLine,
+			&c.Content,
+			&c.ContentHash,
+			&c.TokenCount,
+			&c.CreatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scanning document chunk: %w", err)
+		}
+		chunks = append(chunks, c)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterating document chunks: %w", err)
+	}
+
+	return chunks, nil
+}

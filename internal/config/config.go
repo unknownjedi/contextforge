@@ -66,8 +66,12 @@ type ProvidersConfig struct {
 
 // ProvidersDefaultsConfig holds default provider names.
 type ProvidersDefaultsConfig struct {
-	Embedding string `mapstructure:"embedding" json:"embedding"`
-	LLM       string `mapstructure:"llm" json:"llm"`
+	Embedding          string `mapstructure:"embedding" json:"embedding"`
+	EmbeddingModel     string `mapstructure:"embedding_model" json:"embedding_model"`
+	EmbeddingDimension int    `mapstructure:"embedding_dimensions" json:"embedding_dimensions"`
+	OllamaBaseURL      string `mapstructure:"ollama_base_url" json:"ollama_base_url"`
+	LLM                string `mapstructure:"llm" json:"llm"`
+	LLMModel           string `mapstructure:"llm_model" json:"llm_model"`
 }
 
 // ProvidersAPIKeysConfig holds cloud provider API keys.
@@ -116,8 +120,12 @@ func NewDefaultConfig() *Config {
 		},
 		Providers: ProvidersConfig{
 			Defaults: ProvidersDefaultsConfig{
-				Embedding: "openai",
-				LLM:       "opencode-cli",
+				Embedding:          "openai",
+				EmbeddingModel:     "text-embedding-3-small",
+				EmbeddingDimension: 1536,
+				OllamaBaseURL:      "http://localhost:11434",
+				LLM:                "opencode-cli",
+				LLMModel:           "default",
 			},
 			APIKeys: ProvidersAPIKeysConfig{
 				OpenAI:    "",
@@ -216,7 +224,11 @@ func setDefaults(v *viper.Viper, d *Config) {
 
 	// Providers
 	v.SetDefault("providers.defaults.embedding", d.Providers.Defaults.Embedding)
+	v.SetDefault("providers.defaults.embedding_model", d.Providers.Defaults.EmbeddingModel)
+	v.SetDefault("providers.defaults.embedding_dimensions", d.Providers.Defaults.EmbeddingDimension)
+	v.SetDefault("providers.defaults.ollama_base_url", d.Providers.Defaults.OllamaBaseURL)
 	v.SetDefault("providers.defaults.llm", d.Providers.Defaults.LLM)
+	v.SetDefault("providers.defaults.llm_model", d.Providers.Defaults.LLMModel)
 	v.SetDefault("providers.api_keys.openai", d.Providers.APIKeys.OpenAI)
 	v.SetDefault("providers.api_keys.anthropic", d.Providers.APIKeys.Anthropic)
 	v.SetDefault("providers.api_keys.gemini", d.Providers.APIKeys.Gemini)
@@ -252,7 +264,11 @@ func bindEnvVars(v *viper.Viper) {
 
 	// Providers
 	_ = v.BindEnv("providers.defaults.embedding", "CF_PROVIDERS_DEFAULTS_EMBEDDING", "EMBEDDING_PROVIDER")
+	_ = v.BindEnv("providers.defaults.embedding_model", "CF_EMBEDDING_MODEL", "EMBEDDING_MODEL")
+	_ = v.BindEnv("providers.defaults.embedding_dimensions", "CF_EMBEDDING_DIMENSIONS", "EMBEDDING_DIMENSIONS")
+	_ = v.BindEnv("providers.defaults.ollama_base_url", "CF_OLLAMA_BASE_URL", "OLLAMA_BASE_URL")
 	_ = v.BindEnv("providers.defaults.llm", "CF_PROVIDERS_DEFAULTS_LLM", "LLM_PROVIDER")
+	_ = v.BindEnv("providers.defaults.llm_model", "CF_LLM_MODEL", "LLM_MODEL")
 	_ = v.BindEnv("providers.api_keys.openai", "CF_PROVIDERS_API_KEYS_OPENAI", "OPENAI_API_KEY")
 	_ = v.BindEnv("providers.api_keys.anthropic", "CF_PROVIDERS_API_KEYS_ANTHROPIC", "ANTHROPIC_API_KEY")
 	_ = v.BindEnv("providers.api_keys.gemini", "CF_PROVIDERS_API_KEYS_GEMINI", "GEMINI_API_KEY")

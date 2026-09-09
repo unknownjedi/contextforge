@@ -115,24 +115,7 @@ export default function ProjectDetailPage() {
       if (projData) {
         setProject(projData);
       } else {
-        // Fallback demo state
-        setProject({
-          id: projectId,
-          name: "ContextForge Core Service",
-          description:
-            "High-performance Go RAG API, asynchronous worker ingestion pipeline, and pgvector embeddings.",
-          owner_user_id: "00000000-0000-0000-0000-000000000000",
-          embedding_provider: "ollama",
-          embedding_model: "nomic-embed-text",
-          embedding_dimension: 768,
-          llm_provider: "cli_opencode",
-          total_documents: 142,
-          total_chunks: 1890,
-          total_sources: 2,
-          status: "ready",
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        });
+        setError("Project not found");
       }
 
       setSources(sourcesData || []);
@@ -310,117 +293,10 @@ export default function ProjectDetailPage() {
       if (docDetail && docDetail.chunks && docDetail.chunks.length > 0) {
         setInspectingChunks(docDetail.chunks);
       } else {
-        // High fidelity mock chunks based on file path
-        const fileLines = doc.file_path.includes("rag.go")
-          ? [
-              {
-                id: `chunk-${doc.id}-0`,
-                chunk_index: 0,
-                start_line: 1,
-                end_line: 40,
-                token_count: 285,
-                content: `package service
-
-import (
-    "context"
-    "fmt"
-    "time"
-
-    "github.com/google/uuid"
-    "github.com/your-org/contextforge/internal/model"
-    "github.com/your-org/contextforge/internal/repository"
-)
-
-// RAGService coordinates semantic retrieval and augmented prompt construction.
-type RAGService struct {
-    vectorRepo repository.VectorRepository
-    docRepo    repository.DocumentRepository
-    timeout    time.Duration
-}
-
-func NewRAGService(vr repository.VectorRepository, dr repository.DocumentRepository) *RAGService {
-    return &RAGService{
-        vectorRepo: vr,
-        docRepo:    dr,
-        timeout:    15 * time.Second,
-    }
-}`,
-              },
-              {
-                id: `chunk-${doc.id}-1`,
-                chunk_index: 1,
-                start_line: 41,
-                end_line: 85,
-                token_count: 360,
-                content: `// SearchChunks executes isolated project-scoped cosine nearest neighbor retrieval.
-func (s *RAGService) SearchChunks(ctx context.Context, projectID uuid.UUID, embedding []float32, topK int, threshold float32) ([]*model.ChunkMatch, error) {
-    ctx, cancel := context.WithTimeout(ctx, s.timeout)
-    defer cancel()
-
-    params := model.VectorSearchParams{
-        ProjectID:      projectID,
-        QueryEmbedding: embedding,
-        TopK:           topK,
-        SimilarityMin:  threshold,
-    }
-
-    matches, err := s.vectorRepo.SearchSimilar(ctx, params)
-    if err != nil {
-        return nil, fmt.Errorf("vector nearest neighbor retrieval failed: %w", err)
-    }
-
-    return matches, nil
-}`,
-              },
-            ]
-          : [
-              {
-                id: `chunk-${doc.id}-0`,
-                chunk_index: 0,
-                start_line: 1,
-                end_line: 45,
-                token_count: 310,
-                content: `// Package source definition for: ${doc.file_path}
-// Language: ${doc.language || "code"}
-// Content Hash: ${doc.content_hash}
-
-package internal
-
-import (
-    "context"
-    "database/sql"
-    "fmt"
-)
-
-type Manager struct {
-    db *sql.DB
-}
-
-func NewManager(db *sql.DB) *Manager {
-    return &Manager{db: db}
-}`,
-              },
-            ];
-        setInspectingChunks(fileLines);
+        setInspectingChunks([]);
       }
     } catch {
-      // Fallback chunks
-      setInspectingChunks([
-        {
-          id: `chunk-${doc.id}-fallback`,
-          chunk_index: 0,
-          start_line: 1,
-          end_line: 35,
-          token_count: 220,
-          content: `// Indexed AST Chunk for: ${doc.file_path}
-// Content hash: ${doc.content_hash}
-
-func ExecuteContextQuery(ctx context.Context) error {
-    // pgvector HNSW index search
-    return nil
-}`,
-        },
-      ]);
+      setInspectingChunks([]);
     } finally {
       setChunksLoading(false);
     }

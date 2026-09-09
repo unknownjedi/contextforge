@@ -24,4 +24,7 @@ type VectorRepository interface {
 
 	// CountChunksByProjectID returns the total count of chunks for a project.
 	CountChunksByProjectID(ctx context.Context, projectID uuid.UUID) (int64, error)
+
+	// GetChunksByDocumentID returns all chunks for a specific document within a project.
+	GetChunksByDocumentID(ctx context.Context, projectID, documentID uuid.UUID) ([]*model.DocumentChunk, error)
 }

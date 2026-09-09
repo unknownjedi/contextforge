@@ -13,6 +13,7 @@ import (
 type JobRepository interface {
 	Create(ctx context.Context, j *ent.IngestionJob) (*ent.IngestionJob, error)
 	GetByID(ctx context.Context, id, projectID uuid.UUID) (*ent.IngestionJob, error)
+	GetByIDOnly(ctx context.Context, id uuid.UUID) (*ent.IngestionJob, error)
 	ListByProjectID(ctx context.Context, projectID uuid.UUID, limit int) ([]*ent.IngestionJob, error)
 	UpdateProgress(ctx context.Context, id, projectID uuid.UUID, percent, processed, total int) error
 	Complete(ctx context.Context, id, projectID uuid.UUID) error
@@ -53,6 +54,16 @@ func (r *EntJobRepository) GetByID(ctx context.Context, id, projectID uuid.UUID)
 			ingestionjob.IDEQ(id),
 			ingestionjob.ProjectIDEQ(projectID),
 		).
+		Only(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("getting job: %w", err)
+	}
+	return job, nil
+}
+
+func (r *EntJobRepository) GetByIDOnly(ctx context.Context, id uuid.UUID) (*ent.IngestionJob, error) {
+	job, err := r.client.IngestionJob.Query().
+		Where(ingestionjob.IDEQ(id)).
 		Only(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("getting job: %w", err)

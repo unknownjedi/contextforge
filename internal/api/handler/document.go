@@ -8,8 +8,16 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 
+	"github.com/your-org/contextforge/internal/ent"
+	"github.com/your-org/contextforge/internal/model"
 	"github.com/your-org/contextforge/internal/repository"
 )
+
+// DocumentDetailResponse represents a document with its indexed vector chunks.
+type DocumentDetailResponse struct {
+	*ent.Document
+	Chunks []*model.DocumentChunk `json:"chunks"`
+}
 
 // DocumentHandler handles document inspection endpoints.
 type DocumentHandler struct {
@@ -78,7 +86,22 @@ func (h *DocumentHandler) GetDocument(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, doc)
+	var chunks []*model.DocumentChunk
+	if h.vectorRepo != nil {
+		chunks, err = h.vectorRepo.GetChunksByDocumentID(c.Request.Context(), projectID, docID)
+		if err != nil {
+			h.logger.Warn("failed to fetch chunks from vector repo", zap.Error(err), zap.String("doc_id", docID.String()))
+			chunks = []*model.DocumentChunk{}
+		}
+	}
+	if chunks == nil {
+		chunks = []*model.DocumentChunk{}
+	}
+
+	c.JSON(http.StatusOK, DocumentDetailResponse{
+		Document: doc,
+		Chunks:   chunks,
+	})
 }
 
 // DeleteDocument handles DELETE /projects/:id/documents/:doc_id

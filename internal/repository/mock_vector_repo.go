@@ -167,6 +167,30 @@ func (m *MockVectorRepository) CountChunksByProjectID(ctx context.Context, proje
 	return count, nil
 }
 
+// GetChunksByDocumentID returns all chunks for a specific document within a project.
+func (m *MockVectorRepository) GetChunksByDocumentID(ctx context.Context, projectID, documentID uuid.UUID) ([]*model.DocumentChunk, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	var results []*model.DocumentChunk
+	for _, chunk := range m.chunks {
+		if chunk.ProjectID == projectID && chunk.DocumentID == documentID {
+			copied := *chunk
+			if chunk.Embedding != nil {
+				copied.Embedding = make([]float32, len(chunk.Embedding))
+				copy(copied.Embedding, chunk.Embedding)
+			}
+			results = append(results, &copied)
+		}
+	}
+
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].ChunkIndex < results[j].ChunkIndex
+	})
+
+	return results, nil
+}
+
 // Helper: computes cosine similarity between two float32 vectors.
 func cosineSimilarity(a, b []float32) float32 {
 	if len(a) != len(b) || len(a) == 0 {

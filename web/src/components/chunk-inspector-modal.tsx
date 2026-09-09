@@ -28,42 +28,8 @@ export function ChunkInspectorModal({
     setTimeout(() => setCopiedChunkId(null), 2000);
   };
 
-  // Safe fallback chunk if no chunks provided
-  const displayChunks: DocumentChunk[] =
-    chunks.length > 0
-      ? chunks
-      : [
-          {
-            id: `chk-${document.id}-0`,
-            chunk_index: 0,
-            start_line: 1,
-            end_line: 38,
-            token_count: 245,
-            content: `// Source file: ${document.file_path}
-// Language: ${document.language || "text"}
-// Hash: ${document.content_hash}
-
-package service
-
-import (
-    "context"
-    "fmt"
-    "time"
-)
-
-// Ingestion and chunking definition
-type Service struct {
-    timeout time.Duration
-}
-
-func NewService(timeout time.Duration) *Service {
-    return &Service{timeout: timeout}
-}`,
-          },
-        ];
-
-  const selectedChunk =
-    displayChunks[activeChunkIndex] || displayChunks[0];
+  const displayChunks: DocumentChunk[] = chunks;
+  const selectedChunk = displayChunks[activeChunkIndex] || displayChunks[0];
   const chunkLines = (selectedChunk?.content || "").split("\n");
 
   return (
@@ -199,8 +165,9 @@ func NewService(timeout time.Duration) *Service {
                   </table>
                 </div>
               ) : (
-                <div className="flex items-center justify-center h-48 text-zinc-500">
-                  No chunk selected.
+                <div className="flex flex-col items-center justify-center h-48 text-zinc-500 gap-2">
+                  <Layers className="w-8 h-8 text-zinc-600" />
+                  <p>No vector chunks indexed yet for this document.</p>
                 </div>
               )}
             </div>

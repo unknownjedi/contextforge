@@ -119,6 +119,20 @@ func TestFactory_BuiltinProviders(t *testing.T) {
 		}
 	})
 
+	t.Run("OpenAI LLM Missing Key", func(t *testing.T) {
+		_, err := factory.CreateLLM(ProviderOpenAI, FactoryConfig{})
+		if err == nil {
+			t.Fatal("expected error for missing API key, got nil")
+		}
+	})
+
+	t.Run("OpenAI Embedding Missing Key", func(t *testing.T) {
+		_, err := factory.CreateEmbedding(ProviderOpenAI, FactoryConfig{})
+		if err == nil {
+			t.Fatal("expected error for missing API key, got nil")
+		}
+	})
+
 	t.Run("Unsupported Embedding Provider", func(t *testing.T) {
 		_, err := factory.CreateEmbedding("unknown-provider", FactoryConfig{})
 		if err == nil {

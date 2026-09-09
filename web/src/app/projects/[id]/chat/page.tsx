@@ -119,7 +119,7 @@ export default function ProjectChatPage() {
   // Retrieval Settings
   const [showSettings, setShowSettings] = useState(false);
   const [topK, setTopK] = useState(5);
-  const [similarityThreshold, setSimilarityThreshold] = useState(0.7);
+  const [similarityThreshold, setSimilarityThreshold] = useState(0.3);
   const [fileFilter, setFileFilter] = useState("");
   const [temperature, setTemperature] = useState(0.2);
 
