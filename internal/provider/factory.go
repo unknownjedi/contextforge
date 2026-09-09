@@ -105,6 +105,9 @@ func (f *Factory) registerDefaults() {
 	f.RegisterLLM("opencode", func(cfg FactoryConfig) (LLMProvider, error) {
 		return NewOpenCodeCLIProvider(cfg.BinaryPath, cfg.Timeout), nil
 	})
+	f.RegisterLLM("opencode-cli", func(cfg FactoryConfig) (LLMProvider, error) {
+		return NewOpenCodeCLIProvider(cfg.BinaryPath, cfg.Timeout), nil
+	})
 
 	f.RegisterLLM(ProviderCLIClaude, func(cfg FactoryConfig) (LLMProvider, error) {
 		return NewClaudeCLIProvider(cfg.BinaryPath, cfg.Timeout), nil
@@ -112,8 +115,14 @@ func (f *Factory) registerDefaults() {
 	f.RegisterLLM("claude", func(cfg FactoryConfig) (LLMProvider, error) {
 		return NewClaudeCLIProvider(cfg.BinaryPath, cfg.Timeout), nil
 	})
+	f.RegisterLLM("claude-cli", func(cfg FactoryConfig) (LLMProvider, error) {
+		return NewClaudeCLIProvider(cfg.BinaryPath, cfg.Timeout), nil
+	})
 
 	f.RegisterLLM(ProviderCLIGemini, func(cfg FactoryConfig) (LLMProvider, error) {
+		return NewGeminiCLIProvider(cfg.BinaryPath, cfg.Timeout), nil
+	})
+	f.RegisterLLM("gemini-cli", func(cfg FactoryConfig) (LLMProvider, error) {
 		return NewGeminiCLIProvider(cfg.BinaryPath, cfg.Timeout), nil
 	})
 
@@ -121,6 +130,9 @@ func (f *Factory) registerDefaults() {
 		return NewCodexCLIProvider(cfg.BinaryPath, cfg.Timeout), nil
 	})
 	f.RegisterLLM("codex", func(cfg FactoryConfig) (LLMProvider, error) {
+		return NewCodexCLIProvider(cfg.BinaryPath, cfg.Timeout), nil
+	})
+	f.RegisterLLM("codex-cli", func(cfg FactoryConfig) (LLMProvider, error) {
 		return NewCodexCLIProvider(cfg.BinaryPath, cfg.Timeout), nil
 	})
 

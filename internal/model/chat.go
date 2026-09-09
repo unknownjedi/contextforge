@@ -22,6 +22,7 @@ type ChatRequest struct {
 	FileFilters         []string `json:"file_filters,omitempty"`
 	Temperature         float32  `json:"temperature,omitempty"`
 	Model               string   `json:"model,omitempty"`
+	Provider            string   `json:"provider,omitempty"`
 }
 
 // ChatCompletionRequest is an alias for ChatRequest to align with OpenAPI naming.

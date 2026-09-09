@@ -14,12 +14,16 @@ import (
 	"github.com/your-org/contextforge/internal/retrieval"
 )
 
+// ProviderResolver resolves an LLM provider by name.
+type ProviderResolver func(providerName string) (provider.LLMProvider, error)
+
 // RAGService orchestrates context retrieval, structured prompt assembly,
 // and LLM generation for both synchronous and streaming RAG queries.
 type RAGService struct {
-	retriever    retrieval.Retriever
-	llmProvider  provider.LLMProvider
-	defaultModel string
+	retriever        retrieval.Retriever
+	llmProvider      provider.LLMProvider
+	defaultModel     string
+	providerResolver ProviderResolver
 }
 
 // NewRAGService constructs a new RAG orchestration service.
@@ -36,6 +40,27 @@ func (s *RAGService) SetDefaultModel(modelName string) {
 	if modelName != "" {
 		s.defaultModel = modelName
 	}
+}
+
+// SetProviderResolver sets a dynamic resolver to obtain LLM providers by name.
+func (s *RAGService) SetProviderResolver(resolver ProviderResolver) {
+	s.providerResolver = resolver
+}
+
+func (s *RAGService) resolveProvider(reqProvider string) (provider.LLMProvider, error) {
+	if s.providerResolver != nil && reqProvider != "" {
+		p, err := s.providerResolver(reqProvider)
+		if err != nil {
+			return nil, err
+		}
+		if p != nil {
+			return p, nil
+		}
+	}
+	if s.llmProvider == nil {
+		return nil, errors.New("no LLM provider configured")
+	}
+	return s.llmProvider, nil
 }
 
 // Generate executes an end-to-end synchronous RAG query:
@@ -101,7 +126,12 @@ func (s *RAGService) Generate(ctx context.Context, projectID uuid.UUID, req *mod
 	}
 
 	// 4. Generate completion via LLM Provider
-	completionResp, err := s.llmProvider.GenerateCompletion(ctx, completionReq)
+	llm, err := s.resolveProvider(req.Provider)
+	if err != nil {
+		return nil, fmt.Errorf("resolving LLM provider: %w", err)
+	}
+
+	completionResp, err := llm.GenerateCompletion(ctx, completionReq)
 	if err != nil {
 		return nil, fmt.Errorf("generating completion: %w", err)
 	}
@@ -195,8 +225,13 @@ func (s *RAGService) StreamChat(
 	}
 
 	// 5. Stream tokens from LLM Provider
+	llm, err := s.resolveProvider(req.Provider)
+	if err != nil {
+		return nil, fmt.Errorf("resolving LLM provider: %w", err)
+	}
+
 	var accumulated strings.Builder
-	completionResp, err := s.llmProvider.StreamCompletion(ctx, completionReq, func(chunk *model.StreamChunk) error {
+	completionResp, err := llm.StreamCompletion(ctx, completionReq, func(chunk *model.StreamChunk) error {
 		if chunk.Delta != "" {
 			accumulated.WriteString(chunk.Delta)
 			if onToken != nil {

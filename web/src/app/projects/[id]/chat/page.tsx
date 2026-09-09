@@ -275,117 +275,25 @@ export default function ProjectChatPage() {
             setIsStreaming(false);
           },
           onError: (err) => {
-            console.warn("SSE stream error, utilizing graceful fallback simulation:", err);
+            const message =
+              typeof err === "string"
+                ? err
+                : err?.message || "Backend returned an error.";
 
-            // If backend is unreachable, provide realistic streaming response so user can test UI
-            const simulatedCitations: Citation[] = [
-              {
-                source_id: projectId,
-                file_path: "internal/service/rag.go",
-                start_line: 42,
-                end_line: 76,
-                similarity: 0.914,
-                snippet: `// SearchChunks executes isolated project-scoped cosine nearest neighbor retrieval.
-func (s *RAGService) SearchChunks(ctx context.Context, projectID uuid.UUID, embedding []float32, topK int, threshold float32) ([]*model.ChunkMatch, error) {
-    ctx, cancel := context.WithTimeout(ctx, s.timeout)
-    defer cancel()
-
-    params := model.VectorSearchParams{
-        ProjectID:      projectID,
-        QueryEmbedding: embedding,
-        TopK:           topK,
-        SimilarityMin:  threshold,
-    }
-
-    matches, err := s.vectorRepo.SearchSimilar(ctx, params)
-    if err != nil {
-        return nil, fmt.Errorf("vector nearest neighbor retrieval failed: %w", err)
-    }
-
-    return matches, nil
-}`,
-              },
-              {
-                source_id: projectId,
-                file_path: "internal/repository/pgvector_repo.go",
-                start_line: 88,
-                end_line: 115,
-                similarity: 0.862,
-                snippet: `// SearchSimilar executes an HNSW nearest neighbor index query using cosine distance (<=>).
-func (r *PgVectorRepository) SearchSimilar(ctx context.Context, params model.VectorSearchParams) ([]*model.ChunkMatch, error) {
-    query := \`
-        SELECT id, project_id, document_id, chunk_index, start_line, end_line, content,
-               1 - (embedding <=> $1) AS similarity
-        FROM document_chunks
-        WHERE project_id = $2 AND 1 - (embedding <=> $1) >= $3
-        ORDER BY embedding <=> $1 ASC
-        LIMIT $4
-    \`
-    // Execute query with pgx connection pool
-    rows, err := r.pool.Query(ctx, query, pgvector.NewVector(params.QueryEmbedding), params.ProjectID, params.SimilarityMin, params.TopK)
-    return r.scanMatches(rows, err)
-}`,
-              },
-            ];
-
-            const simulatedResponse = `Based on the indexed codebase retrieved via pgvector similarity search, here is the architecture of the **RAG Vector Search Engine**:
-
-### 1. Vector Nearest Neighbor Pipeline
-The retrieval pipeline uses PostgreSQL with the \`pgvector\` extension configured with an **HNSW (Hierarchical Navigable Small World)** index.
-
-\`\`\`go
-params := model.VectorSearchParams{
-    ProjectID:      projectID,
-    QueryEmbedding: embedding,
-    TopK:           topK,
-    SimilarityMin:  threshold,
-}
-matches, err := s.vectorRepo.SearchSimilar(ctx, params)
-\`\`\`
-
-### 2. Multi-Tenant Project Isolation
-Every query is strictly constrained by the \`project_id\` UUID parameter:
-- **Zero cross-tenant leakage**: Vector queries filter against \`WHERE project_id = $2\`.
-- **Cosine distance metric**: Similarities are computed using \`1 - (embedding <=> $1)\`.
-
-### 3. Tree-Sitter AST Chunking
-Source files are partitioned at syntactic function and type definition boundaries rather than arbitrary byte offsets, ensuring semantic coherence.`;
-
-            // Stream simulation
-            let index = 0;
-            const tokenInterval = setInterval(() => {
-              index += 12;
-              if (index >= simulatedResponse.length) {
-                clearInterval(tokenInterval);
-                setMessages((prev) =>
-                  prev.map((msg) =>
-                    msg.id === assistantMessageId
-                      ? {
-                          ...msg,
-                          content: simulatedResponse,
-                          citations: simulatedCitations,
-                          isStreaming: false,
-                          durationMs: Date.now() - startTime,
-                          tokensUsed: 342,
-                        }
-                      : msg
-                  )
-                );
-                setIsStreaming(false);
-              } else {
-                setMessages((prev) =>
-                  prev.map((msg) =>
-                    msg.id === assistantMessageId
-                      ? {
-                          ...msg,
-                          content: simulatedResponse.slice(0, index),
-                          citations: simulatedCitations,
-                        }
-                      : msg
-                  )
-                );
-              }
-            }, 30);
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === assistantMessageId
+                  ? {
+                      ...msg,
+                      isStreaming: false,
+                      error: message,
+                      content: "",
+                    }
+                  : msg
+              )
+            );
+            setErrorBanner(`Chat error: ${message}`);
+            setIsStreaming(false);
           },
         },
         abortController.signal
@@ -682,13 +590,24 @@ Source files are partitioned at syntactic function and type definition boundarie
                   )}
                 </div>
 
-                {/* Markdown Rendered Content */}
-                <div className="text-sm text-zinc-200 leading-relaxed font-sans">
-                  <MarkdownRenderer
-                    content={message.content}
-                    isStreaming={message.isStreaming}
-                  />
-                </div>
+                {/* Error state */}
+                {message.error ? (
+                  <div className="flex items-start gap-2 rounded-lg bg-rose-950/40 border border-rose-800/60 px-3 py-2.5 text-xs text-rose-300">
+                    <AlertCircle className="w-3.5 h-3.5 text-rose-400 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-semibold block text-rose-200">Backend error</span>
+                      <span className="text-rose-400">{message.error}</span>
+                    </div>
+                  </div>
+                ) : (
+                  /* Markdown Rendered Content */
+                  <div className="text-sm text-zinc-200 leading-relaxed font-sans">
+                    <MarkdownRenderer
+                      content={message.content}
+                      isStreaming={message.isStreaming}
+                    />
+                  </div>
+                )}
 
                 {/* Structured Citation Anchors / Pills */}
                 {message.citations && message.citations.length > 0 && (

@@ -447,7 +447,8 @@ export async function streamChat(
           } else if (currentEvent === "done") {
             callbacks.onDone(parsed);
           } else if (currentEvent === "error") {
-            callbacks.onError(new Error(parsed.message || "Streaming error"));
+            const errText = parsed.error || parsed.message || parsed.detail || "Streaming error";
+            callbacks.onError(new Error(errText));
           } else {
             // Fallback for untyped events
             if (parsed.delta !== undefined) {
@@ -480,6 +481,7 @@ export async function streamChat(
           const parsed = JSON.parse(dataStr);
           if (event === "citation") callbacks.onCitation(parsed);
           else if (event === "done") callbacks.onDone(parsed);
+          else if (event === "error") callbacks.onError(new Error(parsed.error || parsed.message || parsed.detail || "Streaming error"));
           else callbacks.onToken(parsed.delta ?? dataStr);
         }
       } catch {

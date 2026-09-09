@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -98,11 +99,23 @@ func main() {
 		embedder = provider.NewMockEmbeddingProvider(768)
 	}
 
+	defaultLLMType := cfg.Providers.Defaults.LLM
+	var defaultAPIKey string
+	switch defaultLLMType {
+	case "anthropic":
+		defaultAPIKey = cfg.Providers.APIKeys.Anthropic
+	case "gemini":
+		defaultAPIKey = cfg.Providers.APIKeys.Gemini
+	default:
+		defaultAPIKey = cfg.Providers.APIKeys.OpenAI
+	}
+
 	llm, err := provider.NewLLMProvider(provider.FactoryConfig{
-		Type:    cfg.Providers.Defaults.LLM,
-		APIKey:  cfg.Providers.APIKeys.OpenAI,
-		Model:   "gpt-4o",
-		Timeout: 60 * time.Second,
+		Type:       defaultLLMType,
+		APIKey:     defaultAPIKey,
+		Model:      "gpt-4o",
+		BinaryPath: cfg.Providers.CLIPaths.OpenCodeCLI,
+		Timeout:    60 * time.Second,
 	})
 	if err != nil {
 		log.Warn("falling back to mock LLM provider", zap.Error(err))
@@ -111,6 +124,48 @@ func main() {
 
 	hybridRetriever := retrieval.NewHybridRetriever(vectorRepo, embedder)
 	ragService := service.NewRAGService(hybridRetriever, llm)
+
+	ragService.SetProviderResolver(func(providerName string) (provider.LLMProvider, error) {
+		name := strings.ToLower(strings.TrimSpace(providerName))
+		switch name {
+		case "openai":
+			if cfg.Providers.APIKeys.OpenAI == "" {
+				return nil, errors.New("OpenAI API key is not configured. Please set OPENAI_API_KEY in your .env file")
+			}
+			return provider.NewLLMProviderByName("openai", provider.FactoryConfig{
+				APIKey:  cfg.Providers.APIKeys.OpenAI,
+				Model:   "gpt-4o",
+				Timeout: 60 * time.Second,
+			})
+		case "anthropic":
+			if cfg.Providers.APIKeys.Anthropic == "" {
+				return nil, errors.New("Anthropic API key is not configured. Please set ANTHROPIC_API_KEY in your .env file")
+			}
+			return provider.NewLLMProviderByName("anthropic", provider.FactoryConfig{
+				APIKey:  cfg.Providers.APIKeys.Anthropic,
+				Model:   "claude-3-5-sonnet",
+				Timeout: 60 * time.Second,
+			})
+		case "gemini":
+			if cfg.Providers.APIKeys.Gemini == "" {
+				return nil, errors.New("Gemini API key is not configured. Please set GEMINI_API_KEY in your .env file")
+			}
+			return provider.NewLLMProviderByName("gemini", provider.FactoryConfig{
+				APIKey:  cfg.Providers.APIKeys.Gemini,
+				Model:   "gemini-1.5-pro",
+				Timeout: 60 * time.Second,
+			})
+		case "opencode", "cli_opencode", "opencode-cli":
+			return provider.NewLLMProviderByName("opencode", provider.FactoryConfig{
+				BinaryPath: cfg.Providers.CLIPaths.OpenCodeCLI,
+				Timeout:    60 * time.Second,
+			})
+		case "mock":
+			return provider.NewMockLLMProvider("ContextForge AI (Mock): ready to answer code questions."), nil
+		default:
+			return nil, fmt.Errorf("unsupported AI provider: %q", providerName)
+		}
+	})
 
 	// 7. Initialize Handlers
 	authH := handler.NewAuthHandler(authService, cfg.Auth.GithubPAT)
