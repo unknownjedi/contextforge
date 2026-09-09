@@ -106,7 +106,50 @@ func (h *SourceHandler) CreateSource(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, created)
+	// Create initial ingestion job record
+	jobID := uuid.New()
+	if h.jobRepo != nil {
+		job := &ent.IngestionJob{
+			ID:              jobID,
+			ProjectID:       projectID,
+			SourceID:        created.ID,
+			Status:          ingestionjob.StatusPending,
+			ProcessedFiles:  0,
+			TotalFiles:      0,
+			ProgressPercent: 0,
+		}
+		if _, err := h.jobRepo.Create(c.Request.Context(), job); err != nil {
+			h.logger.Error("failed to create initial ingestion job record", zap.Error(err))
+		}
+	}
+
+	// Enqueue sync task in worker queue
+	if h.queueClient != nil {
+		_, err := h.queueClient.EnqueueRepoSync(c.Request.Context(), queue.RepoSyncPayload{
+			JobID:     jobID,
+			ProjectID: projectID,
+			SourceID:  created.ID,
+		})
+		if err != nil {
+			h.logger.Error("failed to enqueue initial sync task", zap.Error(err))
+		}
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"id":               created.ID,
+		"project_id":       created.ProjectID,
+		"name":             created.Name,
+		"type":             created.Type,
+		"repo_owner":       created.RepoOwner,
+		"repo_name":        created.RepoName,
+		"branch":           created.Branch,
+		"sync_status":      created.SyncStatus,
+		"last_commit_hash": created.LastCommitHash,
+		"created_at":       created.CreatedAt,
+		"updated_at":       created.UpdatedAt,
+		"source":           created,
+		"job_id":           jobID,
+	})
 }
 
 // DeleteSource handles DELETE /projects/:id/sources/:source_id

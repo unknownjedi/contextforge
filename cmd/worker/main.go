@@ -50,6 +50,7 @@ func main() {
 	defer func() { _ = db.Close() }()
 
 	// 4. Initialize repositories
+	sourceRepo := repository.NewSourceRepository(db.EntClient)
 	docRepo := repository.NewDocumentRepository(db.EntClient)
 	jobRepo := repository.NewJobRepository(db.EntClient)
 	vectorRepo := repository.NewPgVectorRepository(db.SQLDB)
@@ -67,6 +68,7 @@ func main() {
 	}
 
 	// 6. Initialize ingestion pipeline
+	fileFetcher := worker.NewGitHubFileFetcher(cfg.Auth.GithubPAT, log)
 	pipeline := worker.NewIngestionPipeline(
 		docRepo,
 		vectorRepo,
@@ -74,9 +76,10 @@ func main() {
 		embedder,
 		chunk.NewChunker(chunk.DefaultOptions()),
 		ingest.NewMemoryDedupCache(),
-		nil,
+		fileFetcher,
 		log,
 	)
+	pipeline.SetSourceRepository(sourceRepo)
 
 	// 7. Initialize database ingestion pipeline
 	encKey, err := crypto.KeyFromHex(cfg.Auth.TokenEncryptionKey)

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/your-org/contextforge/internal/chunk"
 	"github.com/your-org/contextforge/internal/ent"
+	"github.com/your-org/contextforge/internal/ent/source"
 	"github.com/your-org/contextforge/internal/ingest"
 	"github.com/your-org/contextforge/internal/model"
 	"github.com/your-org/contextforge/internal/provider"
@@ -26,6 +28,7 @@ type FileFetcher interface {
 
 // IngestionPipeline orchestrates the end-to-end repository ingestion and chunk indexing workflow.
 type IngestionPipeline struct {
+	sourceRepo  repository.SourceRepository
 	docRepo     repository.DocumentRepository
 	vectorRepo  repository.VectorRepository
 	jobRepo     repository.JobRepository
@@ -34,6 +37,11 @@ type IngestionPipeline struct {
 	dedupCache  ingest.DedupCache
 	fileFetcher FileFetcher
 	logger      *zap.Logger
+}
+
+// SetSourceRepository assigns a SourceRepository for updating source sync statuses.
+func (p *IngestionPipeline) SetSourceRepository(sourceRepo repository.SourceRepository) {
+	p.sourceRepo = sourceRepo
 }
 
 func NewIngestionPipeline(
@@ -86,14 +94,31 @@ func (p *IngestionPipeline) ProcessSyncTask(ctx context.Context, task *asynq.Tas
 		_ = p.jobRepo.UpdateProgress(ctx, jobID, projectID, 5, 0, 0)
 	}
 
-	// 1. Fetch scanned files from source
-	var scannedFiles []*ingest.ScannedFile
-	if p.fileFetcher != nil {
-		dummySource := &ent.Source{ID: sourceID, ProjectID: projectID}
-		files, err := p.fileFetcher.FetchFiles(ctx, dummySource)
+	var src *ent.Source
+	if p.sourceRepo != nil {
+		var err error
+		src, err = p.sourceRepo.GetByID(ctx, sourceID, projectID)
 		if err != nil {
 			if p.jobRepo != nil && jobID != uuid.Nil {
 				_ = p.jobRepo.Fail(ctx, jobID, projectID, err.Error())
+			}
+			return fmt.Errorf("getting source from database: %w", err)
+		}
+		_, _ = p.sourceRepo.UpdateSyncStatus(ctx, sourceID, projectID, source.SyncStatusSyncing, src.LastCommitHash, nil)
+	} else {
+		src = &ent.Source{ID: sourceID, ProjectID: projectID}
+	}
+
+	// 1. Fetch scanned files from source
+	var scannedFiles []*ingest.ScannedFile
+	if p.fileFetcher != nil {
+		files, err := p.fileFetcher.FetchFiles(ctx, src)
+		if err != nil {
+			if p.jobRepo != nil && jobID != uuid.Nil {
+				_ = p.jobRepo.Fail(ctx, jobID, projectID, err.Error())
+			}
+			if p.sourceRepo != nil {
+				_, _ = p.sourceRepo.UpdateSyncStatus(ctx, sourceID, projectID, source.SyncStatusFailed, "", nil)
 			}
 			return fmt.Errorf("fetching source files: %w", err)
 		}
@@ -282,7 +307,11 @@ func (p *IngestionPipeline) ProcessSyncTask(ctx context.Context, task *asynq.Tas
 		}
 	}
 
-	// 5. Complete job
+	// 5. Complete job & mark source synced
+	now := time.Now()
+	if p.sourceRepo != nil {
+		_, _ = p.sourceRepo.UpdateSyncStatus(ctx, sourceID, projectID, source.SyncStatusSynced, src.LastCommitHash, &now)
+	}
 	if p.jobRepo != nil && jobID != uuid.Nil {
 		_ = p.jobRepo.Complete(ctx, jobID, projectID)
 	}
