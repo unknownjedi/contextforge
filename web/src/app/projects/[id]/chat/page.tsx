@@ -98,9 +98,9 @@ const PROVIDER_OPTIONS: ProviderOption[] = [
   {
     id: "opencode",
     name: "OpenCode CLI",
-    model: "opencode",
-    displayName: "OpenCode CLI (opencode)",
-    description: "Local headless CLI coding agent with bash tool invocation (requires opencode binary)",
+    model: "opencode-go/deepseek-v4-flash",
+    displayName: "OpenCode CLI (DeepSeek V4)",
+    description: "Local OpenCode CLI with DeepSeek / GLM reasoning (zero cloud API key needed)",
     badge: "OpenCode",
     badgeColor: "bg-purple-950/80 text-purple-400 border-purple-800/60",
   },

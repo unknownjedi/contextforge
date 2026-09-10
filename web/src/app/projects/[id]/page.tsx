@@ -1063,7 +1063,7 @@ export default function ProjectDetailPage() {
                   Default LLM Provider
                 </span>
                 <p className="text-sm font-semibold text-zinc-200">
-                  {project?.llm_provider || "cli_opencode"}
+                  {project?.llm_provider || "ollama"}
                 </p>
                 <p className="text-zinc-400 text-[11px]">
                   Coding agent prompt synthesis provider.

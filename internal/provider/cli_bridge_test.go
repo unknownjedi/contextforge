@@ -216,8 +216,8 @@ func TestCLIBridge_Presets(t *testing.T) {
 	if opencode.binaryPath != "opencode" {
 		t.Errorf("expected opencode, got %s", opencode.binaryPath)
 	}
-	if !opencode.passPromptViaStdin {
-		t.Error("expected passPromptViaStdin to be true")
+	if len(opencode.args) == 0 || opencode.args[0] != "run" {
+		t.Errorf("expected run arg for opencode, got %v", opencode.args)
 	}
 
 	claude := NewClaudeCLIProvider("", 1*time.Minute)
@@ -314,3 +314,67 @@ func TestCLIBridge_LargeOutput_NoDeadlock(t *testing.T) {
 		t.Error("expected non-empty content")
 	}
 }
+
+func TestCLIBridge_OpenCode_OutputParsing(t *testing.T) {
+	t.Run("JSON_format", func(t *testing.T) {
+		raw := `{"type":"step_start","timestamp":100}
+{"type":"text","part":{"type":"text","text":"Hello "}}
+{"type":"text","part":{"type":"text","text":"world!"}}
+{"type":"step_finish","part":{"tokens":{"total":42,"input":30,"output":12}}}`
+
+		content, tokens := parseOpenCodeOutput(raw)
+		if content != "Hello world!" {
+			t.Errorf("expected 'Hello world!', got %q", content)
+		}
+		if tokens != 42 {
+			t.Errorf("expected tokens 42, got %d", tokens)
+		}
+	})
+
+	t.Run("plain_text_with_banner", func(t *testing.T) {
+		raw := `> build · deepseek-v4-flash
+
+This is the real response.
+Multiple lines.`
+
+		content, _ := parseOpenCodeOutput(raw)
+		expected := "This is the real response.\nMultiple lines."
+		if content != expected {
+			t.Errorf("expected %q, got %q", expected, content)
+		}
+	})
+}
+
+func TestCLIBridge_OpenCode_CommandPrep(t *testing.T) {
+	p := NewOpenCodeCLIProviderWithModel("/custom/opencode", "opencode-go/glm-5.3-flash", 1*time.Minute)
+
+	req := &model.CompletionRequest{
+		Messages: []model.ChatMessage{{Role: "user", Content: "test prompt"}},
+		Model:    "opencode-go/deepseek-v4-flash",
+	}
+
+	cmd, _, cancel := p.prepareCommand(context.Background(), req, "test prompt")
+	defer cancel()
+
+	cmdStr := strings.Join(cmd.Args, " ")
+	if !strings.Contains(cmdStr, "-m opencode-go/deepseek-v4-flash") {
+		t.Errorf("expected -m opencode-go/deepseek-v4-flash in args: %s", cmdStr)
+	}
+	if !strings.Contains(cmdStr, "--format json") {
+		t.Errorf("expected --format json in args: %s", cmdStr)
+	}
+
+	// Test non-opencode model (e.g. gpt-4o from default RAG service) falls back to default opencode model
+	reqDefault := &model.CompletionRequest{
+		Messages: []model.ChatMessage{{Role: "user", Content: "test prompt"}},
+		Model:    "gpt-4o",
+	}
+	cmdDef, _, cancelDef := p.prepareCommand(context.Background(), reqDefault, "test prompt")
+	defer cancelDef()
+
+	cmdDefStr := strings.Join(cmdDef.Args, " ")
+	if !strings.Contains(cmdDefStr, "-m opencode-go/glm-5.3-flash") {
+		t.Errorf("expected fallback to defaultModel opencode-go/glm-5.3-flash, got: %s", cmdDefStr)
+	}
+}
+

@@ -289,7 +289,7 @@ export default function DashboardPage() {
                     </span>
                     <span className="inline-flex items-center gap-1 rounded bg-zinc-850 px-2 py-0.5 text-zinc-300">
                       <Activity className="w-3 h-3 text-zinc-400" />
-                      {project.llm_provider || "cli_opencode"}
+                      {project.llm_provider || "ollama"}
                     </span>
                   </div>
                 </div>

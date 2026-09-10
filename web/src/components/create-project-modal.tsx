@@ -19,7 +19,7 @@ export function CreateProjectModal({
   const [embeddingProvider, setEmbeddingProvider] = useState("ollama");
   const [embeddingModel, setEmbeddingModel] = useState("nomic-embed-text");
   const [embeddingDimension, setEmbeddingDimension] = useState(768);
-  const [llmProvider, setLlmProvider] = useState("cli_opencode");
+  const [llmProvider, setLlmProvider] = useState("ollama");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -159,10 +159,10 @@ export function CreateProjectModal({
                 onChange={(e) => setLlmProvider(e.target.value)}
                 className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               >
-                <option value="cli_opencode">CLI OpenCode</option>
+                <option value="ollama">Ollama (Local / Qwen)</option>
                 <option value="openai">OpenAI (GPT-4o)</option>
                 <option value="anthropic">Anthropic (Claude 3.5)</option>
-                <option value="ollama">Ollama (Qwen / DeepSeek)</option>
+                <option value="cli_opencode">CLI OpenCode</option>
               </select>
             </div>
           </div>

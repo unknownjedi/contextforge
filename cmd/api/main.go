@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -122,17 +123,17 @@ func main() {
 
 	var llm provider.LLMProvider
 	if defaultLLMType == "cli_opencode" || defaultLLMType == "opencode" {
-		binPath := cfg.Providers.CLIPaths.OpenCodeCLI
-		if binPath == "" {
-			binPath = "opencode"
+		binPath, err := findOpenCodeBinary(cfg.Providers.CLIPaths.OpenCodeCLI)
+		if err != nil {
+			log.Fatal("failed to resolve OpenCode binary", zap.Error(err))
 		}
-		if _, err := exec.LookPath(binPath); err != nil {
-			log.Info("opencode CLI binary not found in PATH; using local Ollama LLM provider", zap.String("bin", binPath))
-			llm = provider.NewOllamaLLMProvider("http://localhost:11434", "qwen3.5:latest", 90*time.Second)
+		log.Info("using OpenCode CLI provider", zap.String("binary", binPath))
+		defaultModel := cfg.Providers.Defaults.LLMModel
+		if defaultModel == "" || defaultModel == "default" {
+			defaultModel = "opencode-go/deepseek-v4-flash"
 		}
-	}
-
-	if llm == nil {
+		llm = provider.NewOpenCodeCLIProviderWithModel(binPath, defaultModel, 120*time.Second)
+	} else {
 		var lErr error
 		llm, lErr = provider.NewLLMProvider(provider.FactoryConfig{
 			Type:       defaultLLMType,
@@ -142,8 +143,7 @@ func main() {
 			Timeout:    60 * time.Second,
 		})
 		if lErr != nil {
-			log.Warn("falling back to Ollama / mock LLM provider", zap.Error(lErr))
-			llm = provider.NewOllamaLLMProvider("http://localhost:11434", "qwen3.5:latest", 90*time.Second)
+			log.Fatal("failed to initialize default LLM provider", zap.Error(lErr))
 		}
 	}
 
@@ -187,17 +187,15 @@ func main() {
 				Timeout: 60 * time.Second,
 			})
 		case "opencode", "cli_opencode", "opencode-cli":
-			binPath := cfg.Providers.CLIPaths.OpenCodeCLI
-			if binPath == "" {
-				binPath = "opencode"
+			binPath, err := findOpenCodeBinary(cfg.Providers.CLIPaths.OpenCodeCLI)
+			if err != nil {
+				return nil, err
 			}
-			if _, err := exec.LookPath(binPath); err != nil {
-				return nil, fmt.Errorf("CLI binary %q not found in PATH. Install opencode or switch provider to Ollama", binPath)
+			defaultModel := cfg.Providers.Defaults.LLMModel
+			if defaultModel == "" || defaultModel == "default" {
+				defaultModel = "opencode-go/deepseek-v4-flash"
 			}
-			return provider.NewLLMProviderByName("opencode", provider.FactoryConfig{
-				BinaryPath: binPath,
-				Timeout:    60 * time.Second,
-			})
+			return provider.NewOpenCodeCLIProviderWithModel(binPath, defaultModel, 120*time.Second), nil
 		case "mock":
 			return provider.NewMockLLMProvider("ContextForge AI (Mock): ready to answer code questions."), nil
 		default:
@@ -282,4 +280,31 @@ func main() {
 	if err := db.Close(); err != nil {
 		log.Error("error closing database", zap.Error(err))
 	}
+}
+
+func findOpenCodeBinary(configured string) (string, error) {
+	if configured != "" {
+		if p, err := exec.LookPath(configured); err == nil {
+			return p, nil
+		}
+		if _, err := os.Stat(configured); err == nil {
+			return configured, nil
+		}
+	}
+	if p, err := exec.LookPath("opencode"); err == nil {
+		return p, nil
+	}
+	home, _ := os.UserHomeDir()
+	candidates := []string{
+		filepath.Join(home, ".local", "bin", "opencode"),
+		filepath.Join(home, ".traycer", "host", "install", "host-runtime", "resources", "providers", "opencode", "darwin-arm64", "opencode"),
+		"/usr/local/bin/opencode",
+		"/opt/homebrew/bin/opencode",
+	}
+	for _, cand := range candidates {
+		if _, err := os.Stat(cand); err == nil {
+			return cand, nil
+		}
+	}
+	return "", errors.New("CLI binary 'opencode' not found in PATH or standard paths (~/.local/bin, ~/.traycer)")
 }

@@ -373,7 +373,7 @@ export default function ProjectsPage() {
                     <span>•</span>
                     <span className="inline-flex items-center gap-1 text-zinc-400">
                       <Sparkles className="w-3 h-3 text-amber-400/80" />
-                      {project.llm_provider || "cli_opencode"}
+                      {project.llm_provider || "ollama"}
                     </span>
                   </div>
                 </div>
