@@ -140,7 +140,11 @@ export default function ProjectDetailPage() {
   const handleTriggerSync = async (sourceId: string, forceFull = false) => {
     setSyncingSourceIds((prev) => ({ ...prev, [sourceId]: true }));
     try {
-      const job = await syncSource(projectId, sourceId, forceFull);
+      const rawJob = await syncSource(projectId, sourceId, forceFull);
+      const job: IngestionJob = {
+        ...rawJob,
+        id: rawJob.id || (rawJob as any).job_id || "",
+      };
       setActiveJob(job);
       setRecentJobs((prev) => [job, ...prev]);
 

@@ -60,20 +60,29 @@ interface ProviderOption {
 
 const PROVIDER_OPTIONS: ProviderOption[] = [
   {
+    id: "ollama",
+    name: "Ollama (Local)",
+    model: "qwen3.5:latest",
+    displayName: "Ollama (qwen3.5:latest)",
+    description: "Local private LLM running on your machine via Ollama (zero API key needed)",
+    badge: "Local Ollama",
+    badgeColor: "bg-emerald-950/80 text-emerald-400 border-emerald-800/60",
+  },
+  {
     id: "openai",
     name: "OpenAI",
     model: "gpt-4o",
     displayName: "OpenAI (gpt-4o)",
-    description: "Multimodal frontier model with advanced code reasoning",
+    description: "Multimodal frontier model with advanced code reasoning (requires OPENAI_API_KEY)",
     badge: "GPT-4o",
-    badgeColor: "bg-emerald-950/80 text-emerald-400 border-emerald-800/60",
+    badgeColor: "bg-blue-950/80 text-blue-400 border-blue-800/60",
   },
   {
     id: "anthropic",
     name: "Anthropic",
     model: "claude-3-5-sonnet",
     displayName: "Anthropic (claude-3-5-sonnet)",
-    description: "Industry-leading code generation and refactoring speed",
+    description: "Industry-leading code generation and refactoring speed (requires ANTHROPIC_API_KEY)",
     badge: "Claude 3.5",
     badgeColor: "bg-amber-950/80 text-amber-400 border-amber-800/60",
   },
@@ -82,18 +91,27 @@ const PROVIDER_OPTIONS: ProviderOption[] = [
     name: "Gemini",
     model: "gemini-1.5-pro",
     displayName: "Gemini (gemini-1.5-pro)",
-    description: "2M token context window with cross-file AST analysis",
+    description: "2M token context window with cross-file AST analysis (requires GEMINI_API_KEY)",
     badge: "Gemini 1.5",
-    badgeColor: "bg-blue-950/80 text-blue-400 border-blue-800/60",
+    badgeColor: "bg-indigo-950/80 text-indigo-400 border-indigo-800/60",
   },
   {
     id: "opencode",
     name: "OpenCode CLI",
     model: "opencode",
     displayName: "OpenCode CLI (opencode)",
-    description: "Local headless CLI coding agent with bash tool invocation",
+    description: "Local headless CLI coding agent with bash tool invocation (requires opencode binary)",
     badge: "OpenCode",
     badgeColor: "bg-purple-950/80 text-purple-400 border-purple-800/60",
+  },
+  {
+    id: "mock",
+    name: "Development AI (Mock)",
+    model: "mock",
+    displayName: "Development AI (Mock)",
+    description: "Offline simulated response agent for testing RAG context & citations without external API keys",
+    badge: "Dev / Mock",
+    badgeColor: "bg-zinc-800 text-zinc-300 border-zinc-700",
   },
 ];
 
@@ -353,8 +371,7 @@ export default function ProjectChatPage() {
           window.history.replaceState({}, "", `${url.pathname}?${url.searchParams.toString()}`);
         }
       } catch (err: any) {
-        setErrorBanner(`Failed to create conversation: ${err.message || err}`);
-        return;
+        console.warn("Failed to create conversation record, proceeding without persistence:", err);
       }
     }
 
@@ -404,7 +421,7 @@ export default function ProjectChatPage() {
       file_filters: fileFilter
         ? fileFilter.split(",").map((s) => s.trim()).filter(Boolean)
         : undefined,
-      conversation_id: currentConvId,
+      conversation_id: currentConvId || undefined,
     };
 
     const abortController = new AbortController();

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -337,9 +338,17 @@ func (h *SourceHandler) SyncSource(c *gin.Context) {
 	// Update source status to syncing
 	_, _ = h.sourceRepo.UpdateSyncStatus(c.Request.Context(), sourceID, projectID, source.SyncStatusSyncing, src.LastCommitHash, nil)
 
+	now := time.Now()
 	c.JSON(http.StatusAccepted, gin.H{
-		"job_id":    jobID,
-		"source_id": sourceID,
-		"status":    "queued",
+		"id":               jobID,
+		"job_id":           jobID,
+		"project_id":       projectID,
+		"source_id":        sourceID,
+		"status":           "queued",
+		"processed_files":  0,
+		"total_files":      totalFiles,
+		"progress_percent": 0,
+		"created_at":       now,
+		"updated_at":       now,
 	})
 }

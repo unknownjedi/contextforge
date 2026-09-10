@@ -154,6 +154,19 @@ func (f *Factory) registerDefaults() {
 		}), nil
 	})
 
+	// Ollama LLM
+	f.RegisterLLM(ProviderOllama, func(cfg FactoryConfig) (LLMProvider, error) {
+		modelName := cfg.Model
+		if modelName == "" || modelName == "default" {
+			modelName = "qwen3.5:latest"
+		}
+		baseURL := cfg.BaseURL
+		if baseURL == "" {
+			baseURL = DefaultOllamaBaseURL
+		}
+		return NewOllamaLLMProvider(baseURL, modelName, cfg.Timeout), nil
+	})
+
 	// Mock LLM
 	f.RegisterLLM(ProviderMock, func(cfg FactoryConfig) (LLMProvider, error) {
 		return NewMockLLMProvider("mock completion"), nil

@@ -70,6 +70,16 @@ func TestFactory_BuiltinProviders(t *testing.T) {
 		}
 	})
 
+	t.Run("Ollama LLM", func(t *testing.T) {
+		p, err := factory.CreateLLM(ProviderOllama, FactoryConfig{Model: "qwen3.5:latest"})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if _, ok := p.(*OllamaLLMProvider); !ok {
+			t.Fatalf("expected *OllamaLLMProvider, got %T", p)
+		}
+	})
+
 	t.Run("OpenAI Embedding", func(t *testing.T) {
 		p, err := factory.CreateEmbedding(ProviderOpenAI, FactoryConfig{APIKey: "test-key"})
 		if err != nil {

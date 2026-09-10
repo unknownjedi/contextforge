@@ -233,13 +233,26 @@ export async function syncSource(
   sourceId: string,
   forceFull = false
 ): Promise<IngestionJob> {
-  return apiFetch<IngestionJob>(
+  const res = await apiFetch<any>(
     `/projects/${projectId}/sources/${sourceId}/sync`,
     {
       method: "POST",
       body: JSON.stringify({ force_full: forceFull }),
     }
   );
+
+  return {
+    id: res.id || res.job_id || "",
+    project_id: res.project_id || projectId,
+    source_id: res.source_id || sourceId,
+    status: res.status || "pending",
+    processed_files: res.processed_files ?? 0,
+    total_files: res.total_files ?? 0,
+    progress_percent: res.progress_percent ?? 0,
+    error_message: res.error_message,
+    created_at: res.created_at || new Date().toISOString(),
+    updated_at: res.updated_at || new Date().toISOString(),
+  };
 }
 
 // ---------------------------------------------------------------------------

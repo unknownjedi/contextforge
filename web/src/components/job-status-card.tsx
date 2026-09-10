@@ -34,16 +34,26 @@ export function JobStatusCard({
   const [allJobs, setAllJobs] = useState<IngestionJob[]>(recentJobs);
   const pollTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  const getJobId = (job: IngestionJob | null | undefined): string => {
+    if (!job) return "";
+    return job.id || (job as any).job_id || "";
+  };
+
   // Sync with prop when activeJob changes
   useEffect(() => {
     if (activeJob) {
-      setCurrentJob(activeJob);
+      const activeId = getJobId(activeJob);
+      const normalizedJob: IngestionJob = {
+        ...activeJob,
+        id: activeId || activeJob.id,
+      };
+      setCurrentJob(normalizedJob);
       setAllJobs((prev) => {
-        const exists = prev.some((j) => j.id === activeJob.id);
+        const exists = prev.some((j) => getJobId(j) === activeId && activeId !== "");
         if (exists) {
-          return prev.map((j) => (j.id === activeJob.id ? activeJob : j));
+          return prev.map((j) => (getJobId(j) === activeId ? normalizedJob : j));
         }
-        return [activeJob, ...prev];
+        return [normalizedJob, ...prev];
       });
     }
   }, [activeJob]);
@@ -76,12 +86,13 @@ export function JobStatusCard({
   );
 
   useEffect(() => {
-    if (currentJob && (currentJob.status === "running" || currentJob.status === "pending")) {
+    const jid = getJobId(currentJob);
+    if (currentJob && jid && (currentJob.status === "running" || currentJob.status === "pending")) {
       setIsPolling(true);
       if (pollTimerRef.current) clearInterval(pollTimerRef.current);
 
       pollTimerRef.current = setInterval(() => {
-        pollJobStatus(currentJob.id);
+        pollJobStatus(jid);
       }, 2000);
 
       return () => {
@@ -93,7 +104,7 @@ export function JobStatusCard({
     } else {
       setIsPolling(false);
     }
-  }, [currentJob?.id, currentJob?.status, pollJobStatus]);
+  }, [currentJob, pollJobStatus]);
 
   const primaryJob = currentJob || (allJobs.length > 0 ? allJobs[0] : null);
 
@@ -198,7 +209,10 @@ export function JobStatusCard({
           {primaryJob && getStatusBadge(primaryJob.status)}
           {primaryJob && (
             <button
-              onClick={() => pollJobStatus(primaryJob.id)}
+              onClick={() => {
+                const jid = getJobId(primaryJob);
+                if (jid) pollJobStatus(jid);
+              }}
               className="p-1.5 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 rounded-lg transition-colors"
               title="Poll latest job status"
             >
@@ -215,7 +229,11 @@ export function JobStatusCard({
             <div className="flex items-center gap-2 text-zinc-300">
               <span className="text-zinc-500 font-mono">Job ID:</span>
               <code className="text-blue-400 font-mono">
-                {primaryJob.id.slice(0, 8)}...{primaryJob.id.slice(-4)}
+                {(() => {
+                  const jid = getJobId(primaryJob);
+                  if (!jid) return "pending";
+                  return jid.length >= 12 ? `${jid.slice(0, 8)}...${jid.slice(-4)}` : jid;
+                })()}
               </code>
             </div>
             <div className="flex items-center gap-3 text-zinc-400 font-mono text-[11px]">
@@ -280,7 +298,7 @@ export function JobStatusCard({
                 <div className="flex items-center gap-2">
                   <Layers className="w-3.5 h-3.5 text-zinc-500" />
                   <code className="text-zinc-300 font-mono text-[11px]">
-                    {job.id.slice(0, 8)}
+                    {getJobId(job).slice(0, 8) || "job"}
                   </code>
                   <span className="text-zinc-500 text-[10px]">
                     {formatDate(job.created_at)}

@@ -110,6 +110,7 @@ export interface IngestionJob {
   total_files?: number;
   error_message?: string;
   created_at?: string;
+  updated_at?: string;
   finished_at?: string;
 }
 

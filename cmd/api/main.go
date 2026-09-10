@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"os/exec"
 	"os/signal"
 	"strings"
 	"syscall"
@@ -112,16 +113,31 @@ func main() {
 		defaultAPIKey = cfg.Providers.APIKeys.OpenAI
 	}
 
-	llm, err := provider.NewLLMProvider(provider.FactoryConfig{
-		Type:       defaultLLMType,
-		APIKey:     defaultAPIKey,
-		Model:      "gpt-4o",
-		BinaryPath: cfg.Providers.CLIPaths.OpenCodeCLI,
-		Timeout:    60 * time.Second,
-	})
-	if err != nil {
-		log.Warn("falling back to mock LLM provider", zap.Error(err))
-		llm = provider.NewMockLLMProvider("ContextForge AI: ready to answer code questions.")
+	var llm provider.LLMProvider
+	if defaultLLMType == "cli_opencode" || defaultLLMType == "opencode" {
+		binPath := cfg.Providers.CLIPaths.OpenCodeCLI
+		if binPath == "" {
+			binPath = "opencode"
+		}
+		if _, err := exec.LookPath(binPath); err != nil {
+			log.Info("opencode CLI binary not found in PATH; using local Ollama LLM provider", zap.String("bin", binPath))
+			llm = provider.NewOllamaLLMProvider("http://localhost:11434", "qwen3.5:latest", 90*time.Second)
+		}
+	}
+
+	if llm == nil {
+		var lErr error
+		llm, lErr = provider.NewLLMProvider(provider.FactoryConfig{
+			Type:       defaultLLMType,
+			APIKey:     defaultAPIKey,
+			Model:      "gpt-4o",
+			BinaryPath: cfg.Providers.CLIPaths.OpenCodeCLI,
+			Timeout:    60 * time.Second,
+		})
+		if lErr != nil {
+			log.Warn("falling back to Ollama / mock LLM provider", zap.Error(lErr))
+			llm = provider.NewOllamaLLMProvider("http://localhost:11434", "qwen3.5:latest", 90*time.Second)
+		}
 	}
 
 	hybridRetriever := retrieval.NewHybridRetriever(vectorRepo, embedder)
@@ -130,9 +146,15 @@ func main() {
 	ragService.SetProviderResolver(func(providerName string) (provider.LLMProvider, error) {
 		name := strings.ToLower(strings.TrimSpace(providerName))
 		switch name {
+		case "ollama", "local":
+			ollamaBaseURL := cfg.Providers.Defaults.OllamaBaseURL
+			if ollamaBaseURL == "" {
+				ollamaBaseURL = "http://localhost:11434"
+			}
+			return provider.NewOllamaLLMProvider(ollamaBaseURL, "qwen3.5:latest", 90*time.Second), nil
 		case "openai":
 			if cfg.Providers.APIKeys.OpenAI == "" {
-				return nil, errors.New("OpenAI API key is not configured. Please set OPENAI_API_KEY in your .env file")
+				return nil, errors.New("OpenAI API key is not configured. Please set OPENAI_API_KEY in your .env file or select Ollama")
 			}
 			return provider.NewLLMProviderByName("openai", provider.FactoryConfig{
 				APIKey:  cfg.Providers.APIKeys.OpenAI,
@@ -158,8 +180,15 @@ func main() {
 				Timeout: 60 * time.Second,
 			})
 		case "opencode", "cli_opencode", "opencode-cli":
+			binPath := cfg.Providers.CLIPaths.OpenCodeCLI
+			if binPath == "" {
+				binPath = "opencode"
+			}
+			if _, err := exec.LookPath(binPath); err != nil {
+				return nil, fmt.Errorf("CLI binary %q not found in PATH. Install opencode or switch provider to Ollama", binPath)
+			}
 			return provider.NewLLMProviderByName("opencode", provider.FactoryConfig{
-				BinaryPath: cfg.Providers.CLIPaths.OpenCodeCLI,
+				BinaryPath: binPath,
 				Timeout:    60 * time.Second,
 			})
 		case "mock":
