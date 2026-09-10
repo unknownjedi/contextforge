@@ -50,12 +50,19 @@ func main() {
 		zap.String("env", cfg.Server.Env),
 	)
 
-	// 3. Initialize database pool
+	// 3. Initialize database pool & run migrations
 	db, err := database.New(&cfg.Database, log)
 	if err != nil {
 		log.Fatal("failed to initialize database pool", zap.Error(err))
 	}
 	defer func() { _ = db.Close() }()
+
+	migrateCtx, migrateCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	if err := database.AutoMigrate(migrateCtx, db.SQLDB, "", log); err != nil {
+		migrateCancel()
+		log.Fatal("failed to run database migrations", zap.Error(err))
+	}
+	migrateCancel()
 
 	// 4. Initialize Redis queue client (optional in standalone dev)
 	var queueClient *queue.Client
