@@ -56,6 +56,67 @@ var (
 			},
 		},
 	}
+	// ChatMessagesColumns holds the columns for the "chat_messages" table.
+	ChatMessagesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "role", Type: field.TypeString},
+		{Name: "content", Type: field.TypeString, Size: 2147483647},
+		{Name: "citations", Type: field.TypeJSON, Nullable: true},
+		{Name: "tokens_used", Type: field.TypeInt, Default: 0},
+		{Name: "duration_ms", Type: field.TypeInt64, Default: 0},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "conversation_id", Type: field.TypeUUID},
+	}
+	// ChatMessagesTable holds the schema information for the "chat_messages" table.
+	ChatMessagesTable = &schema.Table{
+		Name:       "chat_messages",
+		Columns:    ChatMessagesColumns,
+		PrimaryKey: []*schema.Column{ChatMessagesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "chat_messages_conversations_messages",
+				Columns:    []*schema.Column{ChatMessagesColumns[7]},
+				RefColumns: []*schema.Column{ConversationsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "chatmessage_conversation_id",
+				Unique:  false,
+				Columns: []*schema.Column{ChatMessagesColumns[7]},
+			},
+		},
+	}
+	// ConversationsColumns holds the columns for the "conversations" table.
+	ConversationsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "title", Type: field.TypeString, Size: 255, Default: "New Chat"},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "project_id", Type: field.TypeUUID},
+	}
+	// ConversationsTable holds the schema information for the "conversations" table.
+	ConversationsTable = &schema.Table{
+		Name:       "conversations",
+		Columns:    ConversationsColumns,
+		PrimaryKey: []*schema.Column{ConversationsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "conversations_projects_conversations",
+				Columns:    []*schema.Column{ConversationsColumns[4]},
+				RefColumns: []*schema.Column{ProjectsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "conversation_project_id",
+				Unique:  false,
+				Columns: []*schema.Column{ConversationsColumns[4]},
+			},
+		},
+	}
 	// DatabaseSourcesColumns holds the columns for the "database_sources" table.
 	DatabaseSourcesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -377,6 +438,8 @@ var (
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		AuditLogsTable,
+		ChatMessagesTable,
+		ConversationsTable,
 		DatabaseSourcesTable,
 		DocumentsTable,
 		DocumentChunksTable,
@@ -389,6 +452,8 @@ var (
 
 func init() {
 	AuditLogsTable.ForeignKeys[0].RefTable = ProjectsTable
+	ChatMessagesTable.ForeignKeys[0].RefTable = ConversationsTable
+	ConversationsTable.ForeignKeys[0].RefTable = ProjectsTable
 	DatabaseSourcesTable.ForeignKeys[0].RefTable = ProjectsTable
 	DatabaseSourcesTable.ForeignKeys[1].RefTable = SourcesTable
 	DocumentsTable.ForeignKeys[0].RefTable = ProjectsTable

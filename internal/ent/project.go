@@ -61,9 +61,11 @@ type ProjectEdges struct {
 	Jobs []*IngestionJob `json:"jobs,omitempty"`
 	// AuditLogs holds the value of the audit_logs edge.
 	AuditLogs []*AuditLog `json:"audit_logs,omitempty"`
+	// Conversations holds the value of the conversations edge.
+	Conversations []*Conversation `json:"conversations,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [7]bool
+	loadedTypes [8]bool
 }
 
 // OwnerOrErr returns the Owner value or an error if the edge
@@ -129,6 +131,15 @@ func (e ProjectEdges) AuditLogsOrErr() ([]*AuditLog, error) {
 		return e.AuditLogs, nil
 	}
 	return nil, &NotLoadedError{edge: "audit_logs"}
+}
+
+// ConversationsOrErr returns the Conversations value or an error if the edge
+// was not loaded in eager-loading.
+func (e ProjectEdges) ConversationsOrErr() ([]*Conversation, error) {
+	if e.loadedTypes[7] {
+		return e.Conversations, nil
+	}
+	return nil, &NotLoadedError{edge: "conversations"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -271,6 +282,11 @@ func (_m *Project) QueryJobs() *IngestionJobQuery {
 // QueryAuditLogs queries the "audit_logs" edge of the Project entity.
 func (_m *Project) QueryAuditLogs() *AuditLogQuery {
 	return NewProjectClient(_m.config).QueryAuditLogs(_m)
+}
+
+// QueryConversations queries the "conversations" edge of the Project entity.
+func (_m *Project) QueryConversations() *ConversationQuery {
+	return NewProjectClient(_m.config).QueryConversations(_m)
 }
 
 // Update returns a builder for updating this Project.

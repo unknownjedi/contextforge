@@ -13,6 +13,8 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/your-org/contextforge/internal/ent/auditlog"
+	"github.com/your-org/contextforge/internal/ent/chatmessage"
+	"github.com/your-org/contextforge/internal/ent/conversation"
 	"github.com/your-org/contextforge/internal/ent/databasesource"
 	"github.com/your-org/contextforge/internal/ent/document"
 	"github.com/your-org/contextforge/internal/ent/documentchunk"
@@ -81,6 +83,8 @@ func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
 			auditlog.Table:       auditlog.ValidColumn,
+			chatmessage.Table:    chatmessage.ValidColumn,
+			conversation.Table:   conversation.ValidColumn,
 			databasesource.Table: databasesource.ValidColumn,
 			document.Table:       document.ValidColumn,
 			documentchunk.Table:  documentchunk.ValidColumn,

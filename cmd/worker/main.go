@@ -98,7 +98,19 @@ func main() {
 		log,
 	)
 
-	// 8. Initialize Asynq worker server
+	// 8. Initialize URL ingestion handler
+	urlHandler := worker.NewURLIngestHandler(
+		sourceRepo,
+		docRepo,
+		vectorRepo,
+		jobRepo,
+		embedder,
+		chunk.NewChunker(chunk.DefaultOptions()),
+		nil,
+		log,
+	)
+
+	// 9. Initialize Asynq worker server
 	workerServer, err := queue.NewWorkerServer(queue.WorkerConfig{
 		RedisURL:    cfg.Redis.URL,
 		Concurrency: 10,
@@ -110,6 +122,7 @@ func main() {
 	// Register task handlers
 	workerServer.RegisterHandler(queue.TypeRepoSync, pipeline.ProcessSyncTask)
 	workerServer.RegisterHandler(queue.TypeDatabaseSync, dbPipeline.ProcessDatabaseSyncTask)
+	workerServer.RegisterHandler(queue.TypeURLSync, urlHandler.ProcessURLSyncTask)
 
 	// 8. Handle graceful shutdown
 	quit := make(chan os.Signal, 1)

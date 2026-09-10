@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
 	"github.com/your-org/contextforge/internal/ent/auditlog"
+	"github.com/your-org/contextforge/internal/ent/conversation"
 	"github.com/your-org/contextforge/internal/ent/databasesource"
 	"github.com/your-org/contextforge/internal/ent/document"
 	"github.com/your-org/contextforge/internal/ent/documentchunk"
@@ -265,6 +266,21 @@ func (_c *ProjectCreate) AddAuditLogs(v ...*AuditLog) *ProjectCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddAuditLogIDs(ids...)
+}
+
+// AddConversationIDs adds the "conversations" edge to the Conversation entity by IDs.
+func (_c *ProjectCreate) AddConversationIDs(ids ...uuid.UUID) *ProjectCreate {
+	_c.mutation.AddConversationIDs(ids...)
+	return _c
+}
+
+// AddConversations adds the "conversations" edges to the Conversation entity.
+func (_c *ProjectCreate) AddConversations(v ...*Conversation) *ProjectCreate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddConversationIDs(ids...)
 }
 
 // Mutation returns the ProjectMutation object of the builder.
@@ -556,6 +572,22 @@ func (_c *ProjectCreate) createSpec() (*Project, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(auditlog.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.ConversationsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.ConversationsTable,
+			Columns: []string{project.ConversationsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(conversation.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

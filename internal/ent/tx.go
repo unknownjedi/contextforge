@@ -14,6 +14,10 @@ type Tx struct {
 	config
 	// AuditLog is the client for interacting with the AuditLog builders.
 	AuditLog *AuditLogClient
+	// ChatMessage is the client for interacting with the ChatMessage builders.
+	ChatMessage *ChatMessageClient
+	// Conversation is the client for interacting with the Conversation builders.
+	Conversation *ConversationClient
 	// DatabaseSource is the client for interacting with the DatabaseSource builders.
 	DatabaseSource *DatabaseSourceClient
 	// Document is the client for interacting with the Document builders.
@@ -160,6 +164,8 @@ func (tx *Tx) Client() *Client {
 
 func (tx *Tx) init() {
 	tx.AuditLog = NewAuditLogClient(tx.config)
+	tx.ChatMessage = NewChatMessageClient(tx.config)
+	tx.Conversation = NewConversationClient(tx.config)
 	tx.DatabaseSource = NewDatabaseSourceClient(tx.config)
 	tx.Document = NewDocumentClient(tx.config)
 	tx.DocumentChunk = NewDocumentChunkClient(tx.config)

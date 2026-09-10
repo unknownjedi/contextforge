@@ -20,12 +20,20 @@ import (
 	"github.com/your-org/contextforge/internal/ingest"
 )
 
+// PRIssueFetcher abstracts retrieval of pull requests and issues.
+type PRIssueFetcher interface {
+	FetchPullRequests(ctx context.Context, owner, repo string, limit int) ([]*ingest.ScannedFile, error)
+	FetchIssues(ctx context.Context, owner, repo string, limit int) ([]*ingest.ScannedFile, error)
+}
+
 // GitHubFileFetcher retrieves repository files via GitHub archive tarballs or shallow git clone.
 type GitHubFileFetcher struct {
-	patToken   string
-	httpClient *http.Client
-	filter     *ingest.FileFilter
-	logger     *zap.Logger
+	patToken       string
+	httpClient     *http.Client
+	filter         *ingest.FileFilter
+	logger         *zap.Logger
+	prIssueFetcher PRIssueFetcher
+	tarballURLFunc func(owner, repo, branch string) []string
 }
 
 // NewGitHubFileFetcher constructs a new GitHubFileFetcher.
@@ -33,13 +41,32 @@ func NewGitHubFileFetcher(patToken string, logger *zap.Logger) *GitHubFileFetche
 	if logger == nil {
 		logger = zap.NewNop()
 	}
+	trimmedToken := strings.TrimSpace(patToken)
 	return &GitHubFileFetcher{
-		patToken: strings.TrimSpace(patToken),
+		patToken: trimmedToken,
 		httpClient: &http.Client{
 			Timeout: 2 * time.Minute,
 		},
-		filter: ingest.NewFileFilter(ingest.DefaultScannerOptions()),
-		logger: logger,
+		filter:         ingest.NewFileFilter(ingest.DefaultScannerOptions()),
+		logger:         logger,
+		prIssueFetcher: ingest.NewGitHubPRIssueFetcher(trimmedToken, logger),
+	}
+}
+
+// SetPRIssueFetcher sets a custom PRIssueFetcher (useful for testing or customized fetching).
+func (f *GitHubFileFetcher) SetPRIssueFetcher(fetcher PRIssueFetcher) {
+	f.prIssueFetcher = fetcher
+}
+
+// SetTarballURLFunc sets a custom URL resolver for archive tarballs (primarily for testing).
+func (f *GitHubFileFetcher) SetTarballURLFunc(fn func(owner, repo, branch string) []string) {
+	f.tarballURLFunc = fn
+}
+
+// SetHTTPClient sets a custom HTTP client.
+func (f *GitHubFileFetcher) SetHTTPClient(client *http.Client) {
+	if client != nil {
+		f.httpClient = client
 	}
 }
 
@@ -75,54 +102,84 @@ func (f *GitHubFileFetcher) FetchFiles(ctx context.Context, source *ent.Source) 
 		zap.String("branch", branch),
 	)
 
+	var files []*ingest.ScannedFile
+
 	// Strategy 1: Attempt fast HTTP tarball extraction (zero external CLI dependencies)
-	files, err := f.fetchViaTarball(ctx, owner, repo, branch)
-	if err == nil && len(files) > 0 {
+	tbFiles, err := f.fetchViaTarball(ctx, owner, repo, branch)
+	if err == nil && len(tbFiles) > 0 {
 		f.logger.Info("successfully fetched repository via tarball archive",
 			zap.String("repo", owner+"/"+repo),
-			zap.Int("files_count", len(files)),
+			zap.Int("files_count", len(tbFiles)),
 		)
-		return files, nil
-	}
-
-	// If branch was "main" and failed, also try "master"
-	if branch == "main" {
-		files, errMaster := f.fetchViaTarball(ctx, owner, repo, "master")
-		if errMaster == nil && len(files) > 0 {
+		files = tbFiles
+	} else if branch == "main" {
+		// If branch was "main" and failed, also try "master"
+		tbMasterFiles, errMaster := f.fetchViaTarball(ctx, owner, repo, "master")
+		if errMaster == nil && len(tbMasterFiles) > 0 {
 			f.logger.Info("successfully fetched repository via master branch tarball archive",
 				zap.String("repo", owner+"/"+repo),
-				zap.Int("files_count", len(files)),
+				zap.Int("files_count", len(tbMasterFiles)),
 			)
-			return files, nil
+			files = tbMasterFiles
 		}
 	}
 
-	if err != nil {
-		f.logger.Warn("tarball fetch unsuccessful, attempting git clone fallback",
-			zap.String("repo", owner+"/"+repo),
-			zap.Error(err),
-		)
+	if len(files) == 0 {
+		if err != nil {
+			f.logger.Warn("tarball fetch unsuccessful, attempting git clone fallback",
+				zap.String("repo", owner+"/"+repo),
+				zap.Error(err),
+			)
+		}
+
+		// Strategy 2: Fallback to local git shallow clone if git binary is available
+		cloneFiles, cloneErr := f.fetchViaGitClone(ctx, owner, repo, branch)
+		if cloneErr == nil && len(cloneFiles) > 0 {
+			f.logger.Info("successfully fetched repository via git clone",
+				zap.String("repo", owner+"/"+repo),
+				zap.Int("files_count", len(cloneFiles)),
+			)
+			files = cloneFiles
+		} else {
+			if cloneErr != nil {
+				f.logger.Error("git clone fallback failed",
+					zap.String("repo", owner+"/"+repo),
+					zap.Error(cloneErr),
+				)
+			}
+			return nil, fmt.Errorf("failed to fetch repository files: tarball error: %v, clone error: %v", err, cloneErr)
+		}
 	}
 
-	// Strategy 2: Fallback to local git shallow clone if git binary is available
-	cloneFiles, cloneErr := f.fetchViaGitClone(ctx, owner, repo, branch)
-	if cloneErr == nil && len(cloneFiles) > 0 {
-		f.logger.Info("successfully fetched repository via git clone",
-			zap.String("repo", owner+"/"+repo),
-			zap.Int("files_count", len(cloneFiles)),
-		)
-		return cloneFiles, nil
-	}
+	// Ingest Pull Requests and Issues (up to 30 items each) and append to files list
+	if f.prIssueFetcher != nil {
+		prFiles, prErr := f.prIssueFetcher.FetchPullRequests(ctx, owner, repo, 30)
+		if prErr != nil {
+			f.logger.Warn("failed to fetch pull requests, continuing without PRs",
+				zap.String("repo", owner+"/"+repo),
+				zap.Error(prErr),
+			)
+		} else if len(prFiles) > 0 {
+			f.logger.Info("successfully fetched pull requests",
+				zap.String("repo", owner+"/"+repo),
+				zap.Int("prs_count", len(prFiles)),
+			)
+			files = append(files, prFiles...)
+		}
 
-	if cloneErr != nil {
-		f.logger.Error("git clone fallback failed",
-			zap.String("repo", owner+"/"+repo),
-			zap.Error(cloneErr),
-		)
-	}
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch repository files: tarball error: %v, clone error: %v", err, cloneErr)
+		issueFiles, issueErr := f.prIssueFetcher.FetchIssues(ctx, owner, repo, 30)
+		if issueErr != nil {
+			f.logger.Warn("failed to fetch issues, continuing without issues",
+				zap.String("repo", owner+"/"+repo),
+				zap.Error(issueErr),
+			)
+		} else if len(issueFiles) > 0 {
+			f.logger.Info("successfully fetched issues",
+				zap.String("repo", owner+"/"+repo),
+				zap.Int("issues_count", len(issueFiles)),
+			)
+			files = append(files, issueFiles...)
+		}
 	}
 
 	return files, nil
@@ -133,6 +190,9 @@ func (f *GitHubFileFetcher) fetchViaTarball(ctx context.Context, owner, repo, br
 	urls := []string{
 		fmt.Sprintf("https://codeload.github.com/%s/%s/tar.gz/refs/heads/%s", owner, repo, branch),
 		fmt.Sprintf("https://api.github.com/repos/%s/%s/tarball/%s", owner, repo, branch),
+	}
+	if f.tarballURLFunc != nil {
+		urls = f.tarballURLFunc(owner, repo, branch)
 	}
 
 	var lastErr error

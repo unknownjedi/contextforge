@@ -23,9 +23,11 @@ type Handlers struct {
 	Auth     *handler.AuthHandler
 	Project  *handler.ProjectHandler
 	Source   *handler.SourceHandler
-	Document *handler.DocumentHandler
+	Document       *handler.DocumentHandler
+	DocumentUpload *handler.DocumentUploadHandler
 	Job            *handler.JobHandler
 	Chat           *handler.ChatHandler
+	Conversation   *handler.ConversationHandler
 	Webhook        *handler.WebhookHandler
 	DatabaseSource *handler.DatabaseSourceHandler
 }
@@ -135,6 +137,10 @@ func (s *Server) MountRoutes(h Handlers, projectRepo repository.ProjectRepositor
 		v1.POST("/github/webhooks", h.Webhook.HandleWebhook)
 		s.router.POST("/github/webhooks", h.Webhook.HandleWebhook)
 	}
+	if h.DocumentUpload != nil {
+		s.router.POST("/projects/:id/documents/upload", h.DocumentUpload.UploadDocument)
+		s.router.POST("/projects/:id/documents", h.DocumentUpload.UploadDocument)
+	}
 
 	// Authenticated endpoints
 	jwtSecret := s.config.Auth.JWTSecret
@@ -194,6 +200,11 @@ func (s *Server) MountRoutes(h Handlers, projectRepo repository.ProjectRepositor
 				projectGroup.DELETE("/documents/:doc_id", h.Document.DeleteDocument)
 			}
 
+			if h.DocumentUpload != nil {
+				projectGroup.POST("/documents/upload", h.DocumentUpload.UploadDocument)
+				projectGroup.POST("/documents", h.DocumentUpload.UploadDocument)
+			}
+
 			if h.Job != nil {
 				projectGroup.GET("/jobs/:job_id", h.Job.GetJob)
 			}
@@ -201,6 +212,13 @@ func (s *Server) MountRoutes(h Handlers, projectRepo repository.ProjectRepositor
 			if h.Chat != nil {
 				projectGroup.POST("/chat/completions/stream", chatLimiter.Middleware(), h.Chat.StreamChatCompletions)
 				projectGroup.POST("/chat/completions", chatLimiter.Middleware(), h.Chat.ChatCompletions)
+			}
+
+			if h.Conversation != nil {
+				projectGroup.GET("/conversations", h.Conversation.ListConversations)
+				projectGroup.POST("/conversations", h.Conversation.CreateConversation)
+				projectGroup.GET("/conversations/:conv_id", h.Conversation.GetConversation)
+				projectGroup.DELETE("/conversations/:conv_id", h.Conversation.DeleteConversation)
 			}
 		}
 	}

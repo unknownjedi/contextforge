@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
 	"github.com/your-org/contextforge/internal/ent/auditlog"
+	"github.com/your-org/contextforge/internal/ent/conversation"
 	"github.com/your-org/contextforge/internal/ent/databasesource"
 	"github.com/your-org/contextforge/internal/ent/document"
 	"github.com/your-org/contextforge/internal/ent/documentchunk"
@@ -274,6 +275,21 @@ func (_u *ProjectUpdate) AddAuditLogs(v ...*AuditLog) *ProjectUpdate {
 	return _u.AddAuditLogIDs(ids...)
 }
 
+// AddConversationIDs adds the "conversations" edge to the Conversation entity by IDs.
+func (_u *ProjectUpdate) AddConversationIDs(ids ...uuid.UUID) *ProjectUpdate {
+	_u.mutation.AddConversationIDs(ids...)
+	return _u
+}
+
+// AddConversations adds the "conversations" edges to the Conversation entity.
+func (_u *ProjectUpdate) AddConversations(v ...*Conversation) *ProjectUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddConversationIDs(ids...)
+}
+
 // Mutation returns the ProjectMutation object of the builder.
 func (_u *ProjectUpdate) Mutation() *ProjectMutation {
 	return _u.mutation
@@ -409,6 +425,27 @@ func (_u *ProjectUpdate) RemoveAuditLogs(v ...*AuditLog) *ProjectUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveAuditLogIDs(ids...)
+}
+
+// ClearConversations clears all "conversations" edges to the Conversation entity.
+func (_u *ProjectUpdate) ClearConversations() *ProjectUpdate {
+	_u.mutation.ClearConversations()
+	return _u
+}
+
+// RemoveConversationIDs removes the "conversations" edge to Conversation entities by IDs.
+func (_u *ProjectUpdate) RemoveConversationIDs(ids ...uuid.UUID) *ProjectUpdate {
+	_u.mutation.RemoveConversationIDs(ids...)
+	return _u
+}
+
+// RemoveConversations removes "conversations" edges to Conversation entities.
+func (_u *ProjectUpdate) RemoveConversations(v ...*Conversation) *ProjectUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveConversationIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -809,6 +846,51 @@ func (_u *ProjectUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.ConversationsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.ConversationsTable,
+			Columns: []string{project.ConversationsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(conversation.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedConversationsIDs(); len(nodes) > 0 && !_u.mutation.ConversationsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.ConversationsTable,
+			Columns: []string{project.ConversationsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(conversation.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ConversationsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.ConversationsTable,
+			Columns: []string{project.ConversationsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(conversation.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{project.Label}
@@ -1067,6 +1149,21 @@ func (_u *ProjectUpdateOne) AddAuditLogs(v ...*AuditLog) *ProjectUpdateOne {
 	return _u.AddAuditLogIDs(ids...)
 }
 
+// AddConversationIDs adds the "conversations" edge to the Conversation entity by IDs.
+func (_u *ProjectUpdateOne) AddConversationIDs(ids ...uuid.UUID) *ProjectUpdateOne {
+	_u.mutation.AddConversationIDs(ids...)
+	return _u
+}
+
+// AddConversations adds the "conversations" edges to the Conversation entity.
+func (_u *ProjectUpdateOne) AddConversations(v ...*Conversation) *ProjectUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddConversationIDs(ids...)
+}
+
 // Mutation returns the ProjectMutation object of the builder.
 func (_u *ProjectUpdateOne) Mutation() *ProjectMutation {
 	return _u.mutation
@@ -1202,6 +1299,27 @@ func (_u *ProjectUpdateOne) RemoveAuditLogs(v ...*AuditLog) *ProjectUpdateOne {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveAuditLogIDs(ids...)
+}
+
+// ClearConversations clears all "conversations" edges to the Conversation entity.
+func (_u *ProjectUpdateOne) ClearConversations() *ProjectUpdateOne {
+	_u.mutation.ClearConversations()
+	return _u
+}
+
+// RemoveConversationIDs removes the "conversations" edge to Conversation entities by IDs.
+func (_u *ProjectUpdateOne) RemoveConversationIDs(ids ...uuid.UUID) *ProjectUpdateOne {
+	_u.mutation.RemoveConversationIDs(ids...)
+	return _u
+}
+
+// RemoveConversations removes "conversations" edges to Conversation entities.
+func (_u *ProjectUpdateOne) RemoveConversations(v ...*Conversation) *ProjectUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveConversationIDs(ids...)
 }
 
 // Where appends a list predicates to the ProjectUpdate builder.
@@ -1625,6 +1743,51 @@ func (_u *ProjectUpdateOne) sqlSave(ctx context.Context) (_node *Project, err er
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(auditlog.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ConversationsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.ConversationsTable,
+			Columns: []string{project.ConversationsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(conversation.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedConversationsIDs(); len(nodes) > 0 && !_u.mutation.ConversationsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.ConversationsTable,
+			Columns: []string{project.ConversationsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(conversation.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ConversationsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.ConversationsTable,
+			Columns: []string{project.ConversationsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(conversation.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

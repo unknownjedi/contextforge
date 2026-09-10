@@ -213,3 +213,8 @@ func (p *OllamaEmbeddingProvider) Embed(ctx context.Context, req *model.Embeddin
 		Model:      p.model,
 	}, nil
 }
+
+// EmbedBatch generates embeddings for multiple documents (alias for EmbedDocuments).
+func (p *OllamaEmbeddingProvider) EmbedBatch(ctx context.Context, texts []string) ([][]float32, error) {
+	return p.EmbedDocuments(ctx, texts)
+}

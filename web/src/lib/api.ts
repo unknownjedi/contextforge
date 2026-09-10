@@ -20,6 +20,10 @@ import type {
   UpdateDatabaseSourceRequest,
   ConnectionTestResult,
   DatabaseMetadata,
+  Conversation,
+  ChatMessageRecord,
+  CreateConversationRequest,
+  UploadDocumentResponse,
 } from "@/types/api";
 
 const API_BASE_URL =
@@ -265,6 +269,36 @@ export async function getDocument(
   );
 }
 
+export async function uploadDocument(
+  projectId: string,
+  file: File
+): Promise<UploadDocumentResponse> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const res = await apiFetch<any>(`/projects/${projectId}/documents/upload`, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (res && res.document) {
+    return {
+      id: res.document.id,
+      project_id: res.document.project_id,
+      source_id: res.document.source_id,
+      file_path: res.document.file_path,
+      language: res.document.language,
+      content_hash: res.document.content_hash,
+      total_chunks: res.document.total_chunks ?? res.chunk_count ?? 0,
+      created_at: res.document.created_at,
+      document: res.document,
+      chunk_count: res.chunk_count,
+    };
+  }
+
+  return res as UploadDocumentResponse;
+}
+
 export async function deleteSource(
   projectId: string,
   sourceId: string
@@ -500,6 +534,50 @@ export async function streamChat(
       // ignore
     }
   }
+}
+
+// ---------------------------------------------------------------------------
+// Conversations API
+// ---------------------------------------------------------------------------
+
+export async function listConversations(
+  projectId: string
+): Promise<Conversation[]> {
+  const res = await apiFetch<Conversation[]>(`/projects/${projectId}/conversations`);
+  return res || [];
+}
+
+export async function getConversation(
+  projectId: string,
+  convId: string
+): Promise<Conversation & { conversation: Conversation; messages: ChatMessageRecord[] }> {
+  const data = await apiFetch<Conversation>(
+    `/projects/${projectId}/conversations/${convId}`
+  );
+  return {
+    ...data,
+    messages: data.messages || [],
+    conversation: data,
+  };
+}
+
+export async function createConversation(
+  projectId: string,
+  title?: string
+): Promise<Conversation> {
+  return apiFetch<Conversation>(`/projects/${projectId}/conversations`, {
+    method: "POST",
+    body: JSON.stringify(title ? { title } : {}),
+  });
+}
+
+export async function deleteConversation(
+  projectId: string,
+  convId: string
+): Promise<void> {
+  return apiFetch<void>(`/projects/${projectId}/conversations/${convId}`, {
+    method: "DELETE",
+  });
 }
 
 // ---------------------------------------------------------------------------

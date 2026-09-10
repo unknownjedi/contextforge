@@ -71,3 +71,32 @@ func TestNewClient_InvalidRedisURL(t *testing.T) {
 	assert.Error(t, err)
 	assert.Nil(t, client)
 }
+
+func TestNewURLSyncTask(t *testing.T) {
+	jobID := uuid.New()
+	projectID := uuid.New()
+	sourceID := uuid.New()
+	targetURL := "https://example.com/docs"
+
+	payload := queue.URLSyncPayload{
+		JobID:     jobID,
+		ProjectID: projectID,
+		SourceID:  sourceID,
+		URL:       targetURL,
+	}
+
+	task, err := queue.NewURLSyncTask(payload)
+	require.NoError(t, err)
+	require.NotNil(t, task)
+
+	assert.Equal(t, queue.TypeURLSync, task.Type())
+
+	var decoded queue.URLSyncPayload
+	err = json.Unmarshal(task.Payload(), &decoded)
+	require.NoError(t, err)
+
+	assert.Equal(t, jobID, decoded.JobID)
+	assert.Equal(t, projectID, decoded.ProjectID)
+	assert.Equal(t, sourceID, decoded.SourceID)
+	assert.Equal(t, targetURL, decoded.URL)
+}

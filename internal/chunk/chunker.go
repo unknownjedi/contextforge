@@ -33,6 +33,11 @@ func DefaultOptions() ChunkerOptions {
 	}
 }
 
+// Chunker defines the interface for splitting text into indexed semantic chunks.
+type Chunker interface {
+	ChunkText(content string, language string) []Chunk
+}
+
 // MultiLanguageChunker splits code and documentation files into line-anchored semantic chunks.
 type MultiLanguageChunker struct {
 	options ChunkerOptions

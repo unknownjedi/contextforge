@@ -12,6 +12,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/your-org/contextforge/internal/model"
+	"github.com/your-org/contextforge/internal/repository"
 )
 
 // RAGService defines the domain interface consumed by ChatHandler.
@@ -28,8 +29,9 @@ type RAGService interface {
 
 // ChatHandler exposes RAG chat completions endpoints for both SSE streaming and synchronous JSON.
 type ChatHandler struct {
-	ragService RAGService
-	logger     *zap.Logger
+	ragService       RAGService
+	conversationRepo repository.ConversationRepository
+	logger           *zap.Logger
 }
 
 // NewChatHandler constructs a new ChatHandler.
@@ -41,6 +43,11 @@ func NewChatHandler(ragService RAGService, logger *zap.Logger) *ChatHandler {
 		ragService: ragService,
 		logger:     logger,
 	}
+}
+
+// SetConversationRepository sets the repository used to persist conversation messages.
+func (h *ChatHandler) SetConversationRepository(repo repository.ConversationRepository) {
+	h.conversationRepo = repo
 }
 
 // RegisterRoutes registers the chat completion endpoints on the given gin router or router group.
@@ -73,6 +80,34 @@ func (h *ChatHandler) StreamChatCompletions(c *gin.Context) {
 	if strings.TrimSpace(req.Message) == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "message cannot be empty"})
 		return
+	}
+
+	var convID uuid.UUID
+	if req.ConversationID != nil && *req.ConversationID != uuid.Nil {
+		convID = *req.ConversationID
+	}
+
+	if convID != uuid.Nil && h.conversationRepo != nil {
+		conv, err := h.conversationRepo.GetByID(c.Request.Context(), convID, projectID)
+		if err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "conversation not found"})
+			return
+		}
+
+		if _, err := h.conversationRepo.CreateMessage(c.Request.Context(), convID, "user", req.Message, nil, 0, 0); err != nil {
+			h.logger.Error("failed to save user message", zap.Error(err), zap.String("conv_id", convID.String()))
+		}
+
+		if conv.Title == "New Chat" {
+			runes := []rune(strings.TrimSpace(req.Message))
+			newTitle := string(runes)
+			if len(runes) > 40 {
+				newTitle = string(runes[:40])
+			}
+			if newTitle != "" {
+				_, _ = h.conversationRepo.UpdateTitle(c.Request.Context(), convID, projectID, newTitle)
+			}
+		}
 	}
 
 	// Configure headers for text/event-stream
@@ -126,6 +161,24 @@ func (h *ChatHandler) StreamChatCompletions(c *gin.Context) {
 		return
 	}
 
+	if convID != uuid.Nil && h.conversationRepo != nil && resp != nil {
+		var citations []model.Citation
+		if resp.Citations != nil {
+			citations = resp.Citations
+		}
+		if _, err := h.conversationRepo.CreateMessage(
+			c.Request.Context(),
+			convID,
+			"assistant",
+			resp.Answer,
+			citations,
+			resp.TokensUsed,
+			resp.DurationMs,
+		); err != nil {
+			h.logger.Error("failed to save assistant message", zap.Error(err), zap.String("conv_id", convID.String()))
+		}
+	}
+
 	var tokensUsed int
 	var durationMs int64
 	if resp != nil {
@@ -162,6 +215,34 @@ func (h *ChatHandler) ChatCompletions(c *gin.Context) {
 		return
 	}
 
+	var convID uuid.UUID
+	if req.ConversationID != nil && *req.ConversationID != uuid.Nil {
+		convID = *req.ConversationID
+	}
+
+	if convID != uuid.Nil && h.conversationRepo != nil {
+		conv, err := h.conversationRepo.GetByID(c.Request.Context(), convID, projectID)
+		if err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "conversation not found"})
+			return
+		}
+
+		if _, err := h.conversationRepo.CreateMessage(c.Request.Context(), convID, "user", req.Message, nil, 0, 0); err != nil {
+			h.logger.Error("failed to save user message", zap.Error(err), zap.String("conv_id", convID.String()))
+		}
+
+		if conv.Title == "New Chat" {
+			runes := []rune(strings.TrimSpace(req.Message))
+			newTitle := string(runes)
+			if len(runes) > 40 {
+				newTitle = string(runes[:40])
+			}
+			if newTitle != "" {
+				_, _ = h.conversationRepo.UpdateTitle(c.Request.Context(), convID, projectID, newTitle)
+			}
+		}
+	}
+
 	resp, err := h.ragService.Generate(c.Request.Context(), projectID, &req)
 	if err != nil {
 		h.logger.Error("chat completion failed",
@@ -170,6 +251,24 @@ func (h *ChatHandler) ChatCompletions(c *gin.Context) {
 		)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
+	}
+
+	if convID != uuid.Nil && h.conversationRepo != nil && resp != nil {
+		var citations []model.Citation
+		if resp.Citations != nil {
+			citations = resp.Citations
+		}
+		if _, err := h.conversationRepo.CreateMessage(
+			c.Request.Context(),
+			convID,
+			"assistant",
+			resp.Answer,
+			citations,
+			resp.TokensUsed,
+			resp.DurationMs,
+		); err != nil {
+			h.logger.Error("failed to save assistant message", zap.Error(err), zap.String("conv_id", convID.String()))
+		}
 	}
 
 	c.JSON(http.StatusOK, resp)

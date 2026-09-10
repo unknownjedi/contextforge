@@ -14,6 +14,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
 	"github.com/your-org/contextforge/internal/ent/auditlog"
+	"github.com/your-org/contextforge/internal/ent/conversation"
 	"github.com/your-org/contextforge/internal/ent/databasesource"
 	"github.com/your-org/contextforge/internal/ent/document"
 	"github.com/your-org/contextforge/internal/ent/documentchunk"
@@ -38,6 +39,7 @@ type ProjectQuery struct {
 	withChunks          *DocumentChunkQuery
 	withJobs            *IngestionJobQuery
 	withAuditLogs       *AuditLogQuery
+	withConversations   *ConversationQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -221,6 +223,28 @@ func (_q *ProjectQuery) QueryAuditLogs() *AuditLogQuery {
 			sqlgraph.From(project.Table, project.FieldID, selector),
 			sqlgraph.To(auditlog.Table, auditlog.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, project.AuditLogsTable, project.AuditLogsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryConversations chains the current query on the "conversations" edge.
+func (_q *ProjectQuery) QueryConversations() *ConversationQuery {
+	query := (&ConversationClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(project.Table, project.FieldID, selector),
+			sqlgraph.To(conversation.Table, conversation.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, project.ConversationsTable, project.ConversationsColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -427,6 +451,7 @@ func (_q *ProjectQuery) Clone() *ProjectQuery {
 		withChunks:          _q.withChunks.Clone(),
 		withJobs:            _q.withJobs.Clone(),
 		withAuditLogs:       _q.withAuditLogs.Clone(),
+		withConversations:   _q.withConversations.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -510,6 +535,17 @@ func (_q *ProjectQuery) WithAuditLogs(opts ...func(*AuditLogQuery)) *ProjectQuer
 	return _q
 }
 
+// WithConversations tells the query-builder to eager-load the nodes that are connected to
+// the "conversations" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *ProjectQuery) WithConversations(opts ...func(*ConversationQuery)) *ProjectQuery {
+	query := (&ConversationClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withConversations = query
+	return _q
+}
+
 // GroupBy is used to group vertices by one or more fields/columns.
 // It is often used with aggregate functions, like: count, max, mean, min, sum.
 //
@@ -588,7 +624,7 @@ func (_q *ProjectQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Proj
 	var (
 		nodes       = []*Project{}
 		_spec       = _q.querySpec()
-		loadedTypes = [7]bool{
+		loadedTypes = [8]bool{
 			_q.withOwner != nil,
 			_q.withSources != nil,
 			_q.withDatabaseSources != nil,
@@ -596,6 +632,7 @@ func (_q *ProjectQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Proj
 			_q.withChunks != nil,
 			_q.withJobs != nil,
 			_q.withAuditLogs != nil,
+			_q.withConversations != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -661,6 +698,13 @@ func (_q *ProjectQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Proj
 		if err := _q.loadAuditLogs(ctx, query, nodes,
 			func(n *Project) { n.Edges.AuditLogs = []*AuditLog{} },
 			func(n *Project, e *AuditLog) { n.Edges.AuditLogs = append(n.Edges.AuditLogs, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withConversations; query != nil {
+		if err := _q.loadConversations(ctx, query, nodes,
+			func(n *Project) { n.Edges.Conversations = []*Conversation{} },
+			func(n *Project, e *Conversation) { n.Edges.Conversations = append(n.Edges.Conversations, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -861,6 +905,36 @@ func (_q *ProjectQuery) loadAuditLogs(ctx context.Context, query *AuditLogQuery,
 	}
 	query.Where(predicate.AuditLog(func(s *sql.Selector) {
 		s.Where(sql.InValues(s.C(project.AuditLogsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.ProjectID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "project_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *ProjectQuery) loadConversations(ctx context.Context, query *ConversationQuery, nodes []*Project, init func(*Project), assign func(*Project, *Conversation)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[uuid.UUID]*Project)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(conversation.FieldProjectID)
+	}
+	query.Where(predicate.Conversation(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(project.ConversationsColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {

@@ -156,6 +156,11 @@ func (m *MockEmbeddingProvider) EmbedDocuments(ctx context.Context, texts []stri
 	return results, nil
 }
 
+// EmbedBatch generates deterministic mock embeddings (alias for EmbedDocuments).
+func (m *MockEmbeddingProvider) EmbedBatch(ctx context.Context, texts []string) ([][]float32, error) {
+	return m.EmbedDocuments(ctx, texts)
+}
+
 // EmbedQuery returns an embedding for a single text query.
 func (m *MockEmbeddingProvider) EmbedQuery(ctx context.Context, text string) ([]float32, error) {
 	vecs, err := m.EmbedDocuments(ctx, []string{text})

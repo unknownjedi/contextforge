@@ -13,11 +13,20 @@ const (
 	TypeRepoSync     = "repo:sync"
 	TypeDocEmbed     = "doc:embed"
 	TypeDatabaseSync = "database:sync"
+	TypeURLSync      = "url:sync"
 
 	QueueCritical = "critical"
 	QueueDefault  = "default"
 	QueueLow      = "low"
 )
+
+// URLSyncPayload contains parameters for web URL content synchronization.
+type URLSyncPayload struct {
+	JobID     uuid.UUID `json:"job_id"`
+	ProjectID uuid.UUID `json:"project_id"`
+	SourceID  uuid.UUID `json:"source_id"`
+	URL       string    `json:"url"`
+}
 
 // DatabaseSyncPayload contains parameters for external database synchronization.
 type DatabaseSyncPayload struct {
@@ -90,6 +99,20 @@ func NewDatabaseSyncTask(payload DatabaseSyncPayload) (*asynq.Task, error) {
 		asynq.Queue(QueueDefault),
 		asynq.MaxRetry(3),
 		asynq.Timeout(30*time.Minute),
+	), nil
+}
+
+// NewURLSyncTask creates an Asynq task for web URL content synchronization.
+func NewURLSyncTask(payload URLSyncPayload) (*asynq.Task, error) {
+	bytes, err := json.Marshal(payload)
+	if err != nil {
+		return nil, fmt.Errorf("marshaling url sync payload: %w", err)
+	}
+
+	return asynq.NewTask(TypeURLSync, bytes,
+		asynq.Queue(QueueDefault),
+		asynq.MaxRetry(3),
+		asynq.Timeout(10*time.Minute),
 	), nil
 }
 

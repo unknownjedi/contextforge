@@ -36,6 +36,11 @@ func (p *OpenAIEmbeddingProvider) EmbedDocuments(ctx context.Context, texts []st
 	return p.client.EmbedDocuments(ctx, texts)
 }
 
+// EmbedBatch generates embeddings for multiple documents (alias for EmbedDocuments).
+func (p *OpenAIEmbeddingProvider) EmbedBatch(ctx context.Context, texts []string) ([][]float32, error) {
+	return p.EmbedDocuments(ctx, texts)
+}
+
 // EmbedQuery generates an embedding for a single text query.
 func (p *OpenAIEmbeddingProvider) EmbedQuery(ctx context.Context, text string) ([]float32, error) {
 	return p.client.EmbedQuery(ctx, text)

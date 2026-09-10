@@ -65,6 +65,20 @@ func (c *Client) EnqueueDatabaseSync(ctx context.Context, payload DatabaseSyncPa
 	return info, nil
 }
 
+// EnqueueURLSync schedules a web URL content synchronization task.
+func (c *Client) EnqueueURLSync(ctx context.Context, payload URLSyncPayload) (*asynq.TaskInfo, error) {
+	task, err := NewURLSyncTask(payload)
+	if err != nil {
+		return nil, err
+	}
+
+	info, err := c.asynqClient.EnqueueContext(ctx, task)
+	if err != nil {
+		return nil, fmt.Errorf("enqueuing url sync task: %w", err)
+	}
+	return info, nil
+}
+
 // Close gracefully terminates the Asynq client.
 func (c *Client) Close() error {
 	if c.asynqClient != nil {

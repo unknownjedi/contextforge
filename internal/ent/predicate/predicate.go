@@ -9,6 +9,12 @@ import (
 // AuditLog is the predicate function for auditlog builders.
 type AuditLog func(*sql.Selector)
 
+// ChatMessage is the predicate function for chatmessage builders.
+type ChatMessage func(*sql.Selector)
+
+// Conversation is the predicate function for conversation builders.
+type Conversation func(*sql.Selector)
+
 // DatabaseSource is the predicate function for databasesource builders.
 type DatabaseSource func(*sql.Selector)
 

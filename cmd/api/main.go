@@ -15,6 +15,7 @@ import (
 
 	"github.com/your-org/contextforge/internal/api"
 	"github.com/your-org/contextforge/internal/api/handler"
+	"github.com/your-org/contextforge/internal/chunk"
 	"github.com/your-org/contextforge/internal/config"
 	"github.com/your-org/contextforge/internal/connector"
 	"github.com/your-org/contextforge/internal/crypto"
@@ -73,6 +74,7 @@ func main() {
 	sourceRepo := repository.NewSourceRepository(db.EntClient)
 	docRepo := repository.NewDocumentRepository(db.EntClient)
 	jobRepo := repository.NewJobRepository(db.EntClient)
+	conversationRepo := repository.NewConversationRepository(db.EntClient)
 	vectorRepo := repository.NewPgVectorRepository(db.SQLDB)
 
 	// 6. Initialize Services
@@ -171,9 +173,13 @@ func main() {
 	authH := handler.NewAuthHandler(authService, cfg.Auth.GithubPAT)
 	projectH := handler.NewProjectHandler(projectRepo, log)
 	sourceH := handler.NewSourceHandler(sourceRepo, jobRepo, queueClient, log)
+	chunker := chunk.NewChunker(chunk.DefaultOptions())
 	docH := handler.NewDocumentHandler(docRepo, vectorRepo, log)
+	docUploadH := handler.NewDocumentUploadHandler(docRepo, sourceRepo, vectorRepo, embedder, chunker, log)
 	jobH := handler.NewJobHandler(jobRepo, log)
 	chatH := handler.NewChatHandler(ragService, log)
+	chatH.SetConversationRepository(conversationRepo)
+	conversationH := handler.NewConversationHandler(conversationRepo, log)
 	webhookH := handler.NewWebhookHandler(cfg.Auth.WebhookSecret, log)
 
 	encKey, err := crypto.KeyFromHex(cfg.Auth.TokenEncryptionKey)
@@ -199,8 +205,10 @@ func main() {
 		Project:        projectH,
 		Source:         sourceH,
 		Document:       docH,
+		DocumentUpload: docUploadH,
 		Job:            jobH,
 		Chat:           chatH,
+		Conversation:   conversationH,
 		Webhook:        webhookH,
 		DatabaseSource: dbSourceH,
 	}, projectRepo)

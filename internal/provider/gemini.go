@@ -440,6 +440,11 @@ func (p *GeminiProvider) EmbedDocuments(ctx context.Context, texts []string) ([]
 	return allEmbeddings, nil
 }
 
+// EmbedBatch generates embeddings for multiple documents (alias for EmbedDocuments).
+func (p *GeminiProvider) EmbedBatch(ctx context.Context, texts []string) ([][]float32, error) {
+	return p.EmbedDocuments(ctx, texts)
+}
+
 // EmbedQuery generates an embedding for a single text query.
 func (p *GeminiProvider) EmbedQuery(ctx context.Context, text string) ([]float32, error) {
 	res, err := p.EmbedDocuments(ctx, []string{text})

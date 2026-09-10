@@ -16,13 +16,14 @@ type Citation struct {
 // ChatRequest represents the payload for RAG chat queries.
 // Matches openapi.yaml #/components/schemas/ChatCompletionRequest
 type ChatRequest struct {
-	Message             string   `json:"message" binding:"required"`
-	TopK                int      `json:"top_k,omitempty"`
-	SimilarityThreshold float32  `json:"similarity_threshold,omitempty"`
-	FileFilters         []string `json:"file_filters,omitempty"`
-	Temperature         float32  `json:"temperature,omitempty"`
-	Model               string   `json:"model,omitempty"`
-	Provider            string   `json:"provider,omitempty"`
+	Message             string     `json:"message" binding:"required"`
+	ConversationID      *uuid.UUID `json:"conversation_id,omitempty"`
+	TopK                int        `json:"top_k,omitempty"`
+	SimilarityThreshold float32    `json:"similarity_threshold,omitempty"`
+	FileFilters         []string   `json:"file_filters,omitempty"`
+	Temperature         float32    `json:"temperature,omitempty"`
+	Model               string     `json:"model,omitempty"`
+	Provider            string     `json:"provider,omitempty"`
 }
 
 // ChatCompletionRequest is an alias for ChatRequest to align with OpenAPI naming.

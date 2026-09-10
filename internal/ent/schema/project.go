@@ -63,6 +63,7 @@ func (Project) Edges() []ent.Edge {
 		edge.To("chunks", DocumentChunk.Type),
 		edge.To("jobs", IngestionJob.Type),
 		edge.To("audit_logs", AuditLog.Type),
+		edge.To("conversations", Conversation.Type),
 	}
 }
 

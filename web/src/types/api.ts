@@ -85,11 +85,12 @@ export interface CreateSourceRequest {
   name?: string;
   type?: string;
   repo_url?: string;
-  repo_owner: string;
-  repo_name: string;
+  repo_owner?: string;
+  repo_name?: string;
   branch?: string;
   auth_method?: AuthMethod;
   pat_token?: string;
+  url?: string;
 }
 
 export interface SourceIngestionQueued {
@@ -142,6 +143,19 @@ export interface DocumentListResponse {
   total: number;
 }
 
+export interface UploadDocumentResponse {
+  id: string;
+  project_id: string;
+  source_id: string;
+  file_path: string;
+  language: string;
+  content_hash: string;
+  total_chunks: number;
+  created_at: string;
+  document?: Document;
+  chunk_count?: number;
+}
+
 export interface ChatCompletionRequest {
   message: string;
   provider?: string;
@@ -150,6 +164,7 @@ export interface ChatCompletionRequest {
   similarity_threshold?: number;
   file_filters?: string[];
   temperature?: number;
+  conversation_id?: string;
 }
 
 export interface Citation {
@@ -166,6 +181,30 @@ export interface ChatCompletionResponse {
   citations: Citation[];
   tokens_used: number;
   duration_ms: number;
+}
+
+export interface ChatMessageRecord {
+  id: string;
+  conversation_id: string;
+  role: "user" | "assistant" | "system";
+  content: string;
+  citations?: Citation[];
+  tokens_used?: number;
+  duration_ms?: number;
+  created_at: string;
+}
+
+export interface Conversation {
+  id: string;
+  project_id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+  messages?: ChatMessageRecord[];
+}
+
+export interface CreateConversationRequest {
+  title?: string;
 }
 
 export type StreamEvent =

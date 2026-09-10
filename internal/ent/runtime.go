@@ -7,6 +7,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/your-org/contextforge/internal/ent/auditlog"
+	"github.com/your-org/contextforge/internal/ent/chatmessage"
+	"github.com/your-org/contextforge/internal/ent/conversation"
 	"github.com/your-org/contextforge/internal/ent/databasesource"
 	"github.com/your-org/contextforge/internal/ent/document"
 	"github.com/your-org/contextforge/internal/ent/documentchunk"
@@ -51,6 +53,50 @@ func init() {
 	auditlogDescID := auditlogFields[0].Descriptor()
 	// auditlog.DefaultID holds the default value on creation for the id field.
 	auditlog.DefaultID = auditlogDescID.Default.(func() uuid.UUID)
+	chatmessageFields := schema.ChatMessage{}.Fields()
+	_ = chatmessageFields
+	// chatmessageDescRole is the schema descriptor for role field.
+	chatmessageDescRole := chatmessageFields[2].Descriptor()
+	// chatmessage.RoleValidator is a validator for the "role" field. It is called by the builders before save.
+	chatmessage.RoleValidator = chatmessageDescRole.Validators[0].(func(string) error)
+	// chatmessageDescTokensUsed is the schema descriptor for tokens_used field.
+	chatmessageDescTokensUsed := chatmessageFields[5].Descriptor()
+	// chatmessage.DefaultTokensUsed holds the default value on creation for the tokens_used field.
+	chatmessage.DefaultTokensUsed = chatmessageDescTokensUsed.Default.(int)
+	// chatmessageDescDurationMs is the schema descriptor for duration_ms field.
+	chatmessageDescDurationMs := chatmessageFields[6].Descriptor()
+	// chatmessage.DefaultDurationMs holds the default value on creation for the duration_ms field.
+	chatmessage.DefaultDurationMs = chatmessageDescDurationMs.Default.(int64)
+	// chatmessageDescCreatedAt is the schema descriptor for created_at field.
+	chatmessageDescCreatedAt := chatmessageFields[7].Descriptor()
+	// chatmessage.DefaultCreatedAt holds the default value on creation for the created_at field.
+	chatmessage.DefaultCreatedAt = chatmessageDescCreatedAt.Default.(func() time.Time)
+	// chatmessageDescID is the schema descriptor for id field.
+	chatmessageDescID := chatmessageFields[0].Descriptor()
+	// chatmessage.DefaultID holds the default value on creation for the id field.
+	chatmessage.DefaultID = chatmessageDescID.Default.(func() uuid.UUID)
+	conversationFields := schema.Conversation{}.Fields()
+	_ = conversationFields
+	// conversationDescTitle is the schema descriptor for title field.
+	conversationDescTitle := conversationFields[2].Descriptor()
+	// conversation.DefaultTitle holds the default value on creation for the title field.
+	conversation.DefaultTitle = conversationDescTitle.Default.(string)
+	// conversation.TitleValidator is a validator for the "title" field. It is called by the builders before save.
+	conversation.TitleValidator = conversationDescTitle.Validators[0].(func(string) error)
+	// conversationDescCreatedAt is the schema descriptor for created_at field.
+	conversationDescCreatedAt := conversationFields[3].Descriptor()
+	// conversation.DefaultCreatedAt holds the default value on creation for the created_at field.
+	conversation.DefaultCreatedAt = conversationDescCreatedAt.Default.(func() time.Time)
+	// conversationDescUpdatedAt is the schema descriptor for updated_at field.
+	conversationDescUpdatedAt := conversationFields[4].Descriptor()
+	// conversation.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	conversation.DefaultUpdatedAt = conversationDescUpdatedAt.Default.(func() time.Time)
+	// conversation.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	conversation.UpdateDefaultUpdatedAt = conversationDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// conversationDescID is the schema descriptor for id field.
+	conversationDescID := conversationFields[0].Descriptor()
+	// conversation.DefaultID holds the default value on creation for the id field.
+	conversation.DefaultID = conversationDescID.Default.(func() uuid.UUID)
 	databasesourceFields := schema.DatabaseSource{}.Fields()
 	_ = databasesourceFields
 	// databasesourceDescDatabaseType is the schema descriptor for database_type field.
